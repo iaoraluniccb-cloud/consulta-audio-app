@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
 <script>
 if(location.hash==='#app'){
-  document.write('<style>#page-login{display:none!important}body{background:#FDF9F4!important}</style>');
+  document.write('<style>#page-login{display:none!important;visibility:hidden!important}body{background:#FDF9F4!important}</style>');
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -176,7 +176,7 @@ if(location.hash==='#app'){
 </header>
 
 <!-- LOGIN -->
-<div id="page-login" class="page" style="display:none">
+<div id="page-login" class="page" style="display:none!important">
   <div class="login-box">
     <div class="login-logo">
       <div class="logo-wrap">🎙️</div>
