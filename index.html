@@ -1467,7 +1467,7 @@ async function loadConfig() {
 // ══════════════════════════════════════════════
 //  UI
 // ══════════════════════════════════════════════
-function showPage(id) { document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='';}); document.getElementById(id).classList.add('active'); document.body.classList.toggle('login-mode', id==='page-login'); }
+function showPage(id) { document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active'); if(p.id!=='page-login') p.style.display=''; }); if(id!=='page-login'){ const lp=document.getElementById('page-login'); lp.style.display='none'; } document.getElementById(id).classList.add('active'); document.body.classList.toggle('login-mode', id==='page-login'); }
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => {
     const fn = b.getAttribute('onclick')||'';
@@ -1895,9 +1895,7 @@ async function seedUsers() {
   }
 }
 
-(async () => {
-  await seedUsers();
-  // Auto-login direto sem Supabase
+(() => {
   const VELLO_MAP = {
     thais:      {username:'adm',      name:'Administrador', role:'Administrador'},
     dra_mone:   {username:'adm',      name:'Dra. Mone',     role:'Administrador'},
