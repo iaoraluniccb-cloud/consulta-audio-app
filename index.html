@@ -1897,21 +1897,21 @@ async function seedUsers() {
 
 (async () => {
   await seedUsers();
-  // Auto-login — pula tela de login sempre
-  const MAP = {thais:'adm', dra_mone:'adm', dr_aurelio:'adm', dr_scharles:'adm', brendha:'brendha', bruna:'adm', suelen:'adm'};
+  // Auto-login direto sem Supabase
+  const VELLO_MAP = {
+    thais:      {username:'adm',      name:'Administrador', role:'Administrador'},
+    dra_mone:   {username:'adm',      name:'Dra. Mone',     role:'Administrador'},
+    dr_aurelio: {username:'adm',      name:'Dr. Aurélio',   role:'Administrador'},
+    dr_scharles:{username:'adm',      name:'Dr. Scharles',  role:'Administrador'},
+    brendha:    {username:'brendha',  name:'Brendha',       role:'Captação'},
+    bruna:      {username:'adm',      name:'Bruna',         role:'Administrador'},
+    suelen:     {username:'adm',      name:'Suelen',        role:'Administrador'},
+  };
   let velloUser = localStorage.getItem('ou_currentUser');
   if (!velloUser) { try { velloUser = window.parent.localStorage.getItem('ou_currentUser'); } catch(e){} }
-  const saved = localStorage.getItem('athenaUser');
-  if (saved) {
-    try { currentUser = JSON.parse(saved); document.body.classList.remove('login-mode'); enterApp(); return; } catch(e) { localStorage.removeItem('athenaUser'); }
-  }
-  // Busca usuário no Supabase e entra direto
-  try {
-    const username = MAP[velloUser] || 'adm';
-    const { data } = await supa.from('usuarios').select('*').eq('username', username).single();
-    if (data) { currentUser = data; localStorage.setItem('athenaUser', JSON.stringify(data)); document.body.classList.remove('login-mode'); enterApp(); return; }
-  } catch(e) {}
-  loadLoginUsers();
+  currentUser = VELLO_MAP[velloUser] || {username:'adm', name:'Administrador', role:'Administrador'};
+  document.body.classList.remove('login-mode');
+  enterApp();
 })();
 </script>
 </body>
