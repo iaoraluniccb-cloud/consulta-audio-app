@@ -1,0 +1,1918 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Athena — Assistente de Avaliação</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>">
+<script>
+if(location.hash==='#app'){
+  document.write('<style>#page-login{display:none!important}body{background:#FDF9F4!important}</style>');
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Cormorant+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #8B2D42; --primary-dark: #6A1F30; --primary-light: #f9eef1;
+    --danger: #e74c3c; --danger-dark: #c0392b; --warn: #f39c12;
+    --text: #2c2c2c; --text-muted: #8a7878; --border: #e8dede;
+    --bg: #FDF9F4; --white: #ffffff; --radius: 12px;
+    --shadow: 0 2px 12px rgba(139,45,66,0.08); --shadow-lg: 0 8px 32px rgba(139,45,66,0.14);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; letter-spacing: -0.01em; }
+  body.login-mode { background: linear-gradient(160deg, #8B2D42 0%, #6A1F30 100%); }
+  header { background: var(--primary); color: white; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; transition: all 0.2s; }
+  body.login-mode header { display: none; }
+  header h1 { font-size: 19px; font-weight: 600; font-family: 'Cormorant SC', serif; letter-spacing: 0.04em; }
+  header p { font-size: 12px; opacity: 0.8; margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  #user-badge { background: rgba(255,255,255,0.15); border-radius: 20px; padding: 5px 12px; font-size: 13px; display: none; }
+  #btn-logout { background: rgba(255,255,255,0.2); border: none; border-radius: 8px; color: white; padding: 6px 12px; cursor: pointer; font-size: 13px; display: none; }
+  .page { display: none; max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+  .page.active { display: block; }
+  .card { background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card-title { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; }
+  input, select, textarea { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 15px; transition: border 0.2s; font-family: inherit; color: var(--text); background: var(--white); }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26,107,90,0.12); }
+  textarea { resize: vertical; min-height: 80px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 13px 24px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; width: 100%; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--primary-light); color: var(--primary); }
+  .btn-danger { background: var(--danger); color: white; }
+  .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-sm { padding: 8px 16px; font-size: 13px; width: auto; }
+  .record-area { display: flex; flex-direction: column; align-items: center; padding: 20px 0 8px; gap: 14px; }
+  #btn-record { width: 84px; height: 84px; border-radius: 50%; border: none; background: var(--primary); color: white; font-size: 34px; cursor: pointer; box-shadow: 0 4px 20px rgba(26,107,90,0.35); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+  #btn-record.recording { background: var(--danger); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{box-shadow:0 4px 20px rgba(231,76,60,0.4)} 50%{box-shadow:0 4px 30px rgba(231,76,60,0.7),0 0 0 14px rgba(231,76,60,0.1)} }
+  #record-timer { font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; display: none; }
+  #record-timer.on { display: block; }
+  #record-status { font-size: 14px; color: var(--text-muted); font-weight: 500; text-align: center; }
+  .live-box { background: var(--bg); border: 2px solid var(--border); border-radius: 10px; padding: 14px; min-height: 80px; font-size: 14px; line-height: 1.7; color: var(--text); margin-top: 12px; transition: border 0.3s; overflow-y: auto; max-height: 200px; }
+  .live-box.active { border-color: var(--danger); }
+  .live-box .interim { color: var(--text-muted); font-style: italic; }
+  .live-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: blink 1s infinite; display: none; }
+  .dot-live.on { display: inline-block; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; background: var(--bg); border-radius: 10px; padding: 4px; }
+  .tab-btn { flex: 1; padding: 9px; border: none; border-radius: 8px; background: transparent; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+  .tab-btn.active { background: var(--white); color: var(--primary); box-shadow: var(--shadow); }
+  .result-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 8px; }
+  .result-text { background: var(--bg); border-radius: 8px; padding: 14px; font-size: 14px; line-height: 1.6; white-space: pre-wrap; border: 1px solid var(--border); min-height: 60px; }
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .profile-item { background: var(--bg); border-radius: 8px; padding: 10px 12px; border: 1px solid var(--border); }
+  .profile-item-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+  .profile-item-value { font-size: 14px; font-weight: 600; color: var(--text); margin-top: 2px; }
+  .processing-card { background: var(--primary-light); border: 1.5px solid #b2d8d0; border-radius: var(--radius); padding: 20px; margin-bottom: 16px; display: none; }
+  .processing-card.visible { display: block; }
+  .processing-steps { list-style: none; }
+  .processing-steps li { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; color: var(--text-muted); }
+  .processing-steps li.done { color: var(--primary); font-weight: 600; }
+  .processing-steps li.active { color: var(--text); font-weight: 600; }
+  .step-icon { font-size: 18px; width: 24px; text-align: center; }
+  .spinner { width: 18px; height: 18px; border: 2.5px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .consulta-item { background: var(--white); border-radius: var(--radius); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow); cursor: pointer; transition: all 0.2s; border-left: 4px solid var(--primary); }
+  .consulta-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .consulta-item-name { font-weight: 700; font-size: 16px; }
+  .consulta-item-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .consulta-item-preview { font-size: 13px; color: var(--text); margin-top: 8px; opacity: 0.8; }
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  #page-login { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 60px); padding: 24px 16px; background: linear-gradient(160deg, #8B2D42 0%, #6A1F30 100%); }
+  .login-box { width: 100%; max-width: 400px; }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo .logo-wrap { width: 72px; height: 72px; background: white; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); font-size: 36px; }
+  .login-logo h2 { font-size: 32px; font-weight: 600; color: white; font-family: 'Cormorant SC', serif; letter-spacing: 0.06em; }
+  .login-logo p { font-size: 13px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+  .user-list { display: flex; flex-direction: column; gap: 10px; }
+  .user-card { background: rgba(255,255,255,0.12); border: 1.5px solid rgba(255,255,255,0.2); border-radius: 14px; padding: 14px 18px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.2s; backdrop-filter: blur(8px); }
+  .user-card:hover { background: rgba(255,255,255,0.22); transform: translateY(-1px); }
+  .user-card.selected { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.6); }
+  .user-avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; color: white; flex-shrink: 0; }
+  .user-card-info { flex: 1; }
+  .user-card-name { font-size: 16px; font-weight: 700; color: white; }
+  .user-card-role { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 1px; }
+  .pass-panel { background: rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; margin-top: 12px; display: none; }
+  .pass-panel.open { display: block; }
+  .pass-panel label { color: rgba(255,255,255,0.8); font-size: 13px; font-weight: 600; display: block; margin-bottom: 8px; }
+  .pass-panel input { background: rgba(255,255,255,0.15); border: 1.5px solid rgba(255,255,255,0.3); color: white; border-radius: 10px; padding: 12px 14px; font-size: 15px; width: 100%; }
+  .pass-panel input::placeholder { color: rgba(255,255,255,0.45); }
+  .pass-panel input:focus { outline: none; border-color: rgba(255,255,255,0.7); background: rgba(255,255,255,0.2); }
+  .btn-login-confirm { margin-top: 10px; background: white; color: #8B2D42; font-weight: 700; border: none; border-radius: 10px; padding: 13px; width: 100%; font-size: 15px; cursor: pointer; transition: all 0.2s; }
+  .btn-login-confirm:hover { background: #FDF9F4; }
+  .btn-login-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error-msg { background: rgba(231,76,60,0.25); border: 1px solid rgba(231,76,60,0.5); border-radius: 8px; padding: 10px 14px; color: #ffb3b3; font-size: 13px; margin-bottom: 12px; display: none; }
+  .error-msg.visible { display: block; }
+  .success-msg { background: rgba(46,204,113,0.2); border: 1px solid rgba(46,204,113,0.4); border-radius: 8px; padding: 10px 14px; color: #a8f0c6; font-size: 13px; margin-bottom: 12px; display: none; }
+  .success-msg.visible { display: block; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .modal-overlay.open { display: flex; }
+  .modal-box { background: var(--white); border-radius: 16px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); padding: 24px; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+  .modal-close { background: var(--bg); border: none; border-radius: 8px; width: 32px; height: 32px; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .badge-admin { background: #fef3e2; color: var(--warn); }
+  .badge-user { background: var(--primary-light); color: var(--primary); }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .mt-8{margin-top:8px} .mt-12{margin-top:12px} .mt-16{margin-top:16px}
+  .flex-row { display: flex; gap: 10px; }
+  .flex-row .btn { flex: 1; }
+  .perfil-incerto-row { display:flex; align-items:center; gap:12px; background:#fff8f0; border:1.5px solid #f39c12; border-radius:10px; padding:12px 16px; margin-bottom:12px; cursor:pointer; user-select:none; }
+  .perfil-incerto-row input[type=checkbox] { width:20px; height:20px; accent-color:#f39c12; cursor:pointer; flex-shrink:0; }
+  .perfil-incerto-row .pi-label { font-size:14px; font-weight:600; color:#b07000; }
+  .perfil-incerto-row .pi-sub { font-size:12px; color:#c08020; margin-top:2px; }
+  .pi-badge { display:inline-flex; align-items:center; gap:5px; background:#fff3cd; color:#856404; border:1px solid #ffc107; border-radius:6px; padding:3px 10px; font-size:12px; font-weight:700; }
+  .retorno-card { border-radius:10px; padding:12px 14px; margin-bottom:8px; display:flex; align-items:center; justify-content:space-between; gap:10px; border:2px solid; }
+  .retorno-card.vencido   { background:#fff0f0; border-color:#e63946; }
+  .retorno-card.hoje      { background:#fff0f0; border-color:#e63946; }
+  .retorno-card.amanha    { background:#fff4ec; border-color:#f4842d; }
+  .retorno-card.em2dias   { background:#fffbe6; border-color:#f4c430; }
+  .retorno-card.futuro    { background:#f0f7ff; border-color:#aac8f0; }
+  .retorno-card.ligar     { background:#fef3f3; border-color:#e63946; }
+  .retorno-nome  { font-size:14px; font-weight:700; color:#1a1a1a; }
+  .retorno-info  { font-size:12px; color:#555; margin-top:2px; }
+  .retorno-badge { font-size:11px; font-weight:700; border-radius:20px; padding:3px 10px; white-space:nowrap; }
+  .badge-vermelho { background:#e63946; color:white; }
+  .badge-laranja  { background:#f4842d; color:white; }
+  .badge-amarelo  { background:#f4c430; color:#333; }
+  .badge-azul     { background:#aac8f0; color:#1a3a6a; }
+  .badge-ligar    { background:#e63946; color:white; }
+  .text-muted { color: var(--text-muted); font-size: 13px; }
+  .fw-bold { font-weight: 700; }
+  .user-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .user-row:last-child { border-bottom: none; }
+  .user-info-name { font-weight: 600; font-size: 15px; }
+  .user-info-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.85); z-index: 300; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+  .loading-overlay p { font-size: 16px; color: var(--primary); font-weight: 600; }
+  .rec-tab-btn { border:2px solid var(--border); border-radius:12px; padding:14px 10px; background:var(--white); cursor:pointer; transition:all 0.2s; text-align:center; color:var(--text-muted); }
+  .rec-tab-btn.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
+  .btn-record-el { width:84px; height:84px; border-radius:50%; border:none; background:var(--primary); color:white; font-size:34px; cursor:pointer; box-shadow:0 4px 20px rgba(139,45,66,0.35); transition:all 0.2s; display:flex; align-items:center; justify-content:center; }
+  .btn-record-el.recording { background:var(--danger); animation:pulse 1.5s infinite; }
+  .record-timer-el { font-size:28px; font-weight:700; font-variant-numeric:tabular-nums; display:none; }
+  .record-timer-el.on { display:block; }
+  .record-status-el { font-size:14px; color:var(--text-muted); font-weight:500; text-align:center; }
+  @media (max-width: 400px) { .profile-grid { grid-template-columns: 1fr; } .card { padding: 16px; } }
+</style>
+</head>
+<body class="login-mode" id="body-root">
+
+<header>
+  <div><h1>✨ Athena</h1><p>Assistente de Avaliação</p></div>
+  <div class="header-right">
+    <span id="user-badge"></span>
+    <button id="btn-logout" onclick="logout()">Sair</button>
+  </div>
+</header>
+
+<!-- LOGIN -->
+<div id="page-login" class="page active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-wrap">🎙️</div>
+      <h2>Athena</h2>
+      <p>Selecione seu usuário para entrar</p>
+    </div>
+    <div id="login-error" class="error-msg"></div>
+    <div id="login-success" class="success-msg"></div>
+    <div class="user-list" id="user-list-wrap">
+      <div style="text-align:center;color:rgba(255,255,255,0.6);font-size:14px;padding:20px 0">
+        <div class="spinner" style="margin:0 auto 10px;border-color:rgba(255,255,255,0.3);border-top-color:white"></div>
+        Carregando...
+      </div>
+    </div>
+    <div class="pass-panel" id="pass-panel">
+      <label id="pass-label">Senha</label>
+      <input type="password" id="login-pass" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter') doLogin()">
+      <button class="btn-login-confirm" onclick="doLogin()" id="btn-login">Entrar</button>
+    </div>
+    <div style="margin-top:16px;text-align:center">
+      <button onclick="toggleEmailLogin()" style="background:none;border:none;color:rgba(255,255,255,0.55);font-size:13px;cursor:pointer;text-decoration:underline">Entrar com e-mail</button>
+    </div>
+    <div id="email-login-panel" style="display:none;margin-top:10px;background:rgba(255,255,255,0.1);border-radius:14px;padding:18px">
+      <label style="color:rgba(255,255,255,0.8);font-size:13px;font-weight:600;display:block;margin-bottom:8px">E-mail</label>
+      <input type="email" id="email-login-input" placeholder="seu@email.com" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);color:white;border-radius:10px;padding:12px 14px;font-size:15px;width:100%;margin-bottom:10px" onkeydown="if(event.key==='Enter') document.getElementById('email-login-pass').focus()">
+      <label style="color:rgba(255,255,255,0.8);font-size:13px;font-weight:600;display:block;margin-bottom:8px">Senha</label>
+      <input type="password" id="email-login-pass" placeholder="Digite sua senha" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.3);color:white;border-radius:10px;padding:12px 14px;font-size:15px;width:100%;margin-bottom:10px" onkeydown="if(event.key==='Enter') doEmailLogin()">
+      <button onclick="doEmailLogin()" id="btn-email-login" style="background:white;color:#8B2D42;font-weight:700;border:none;border-radius:10px;padding:13px;width:100%;font-size:15px;cursor:pointer">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="page-main" class="page">
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-nova" onclick="switchTab('nova')">➕ Nova</button>
+    <button class="tab-btn" id="tab-btn-hist-tour" onclick="switchTab('hist-tour')">🗺️ Tour</button>
+    <button class="tab-btn" id="tab-btn-hist-aval" onclick="switchTab('hist-aval')">🔬 Avaliação</button>
+    <button class="tab-btn" id="tab-btn-hist-rel" onclick="switchTab('hist-rel')">💼 Relacionamento</button>
+    <button class="tab-btn" onclick="switchTab('config')">⚙️ Config</button>
+  </div>
+
+  <!-- NOVA CONSULTA -->
+  <div id="tab-nova">
+    <div class="card">
+      <div class="card-title">👤 Paciente</div>
+      <div class="form-group"><label>Nome *</label><input type="text" id="pac-nome" placeholder="Nome completo"></div>
+      <div class="flex-row">
+        <div class="form-group" style="flex:1"><label>Idade</label><input type="number" id="pac-idade" placeholder="Ex: 35"></div>
+        <div class="form-group" style="flex:1"><label>Gênero</label>
+          <select id="pac-genero"><option value="">—</option><option>Feminino</option><option>Masculino</option><option>Outro</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Motivo</label><input type="text" id="pac-motivo" placeholder="Ex: Dor de dente, avaliação..."></div>
+    </div>
+
+    <!-- SELETOR DE GRAVAÇÃO -->
+    <div class="card" id="rec-selector">
+      <div class="card-title">🎙️ Gravações</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <button class="rec-tab-btn active" id="rec-tab-tour" onclick="switchRec('tour')">
+          <div style="font-size:20px;margin-bottom:4px">🗺️</div>
+          <div style="font-weight:700;font-size:14px">Tour</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:2px">Captação</div>
+        </button>
+        <button class="rec-tab-btn" id="rec-tab-avaliacao" onclick="switchRec('avaliacao')">
+          <div style="font-size:20px;margin-bottom:4px">🔬</div>
+          <div style="font-weight:700;font-size:14px">Avaliação</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:2px">Clínica</div>
+        </button>
+        <button class="rec-tab-btn" id="rec-tab-comercial" onclick="switchRec('comercial')">
+          <div style="font-size:20px;margin-bottom:4px">💼</div>
+          <div style="font-weight:700;font-size:14px">Comercial</div>
+          <div style="font-size:11px;opacity:0.7;margin-top:2px">Negociação</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- GRAVAÇÃO TOUR -->
+    <div class="card rec-panel" id="panel-tour">
+      <div class="card-title">🗺️ Tour — Captação</div>
+      <div id="no-support-msg" style="display:none;background:#fff8e7;border:1.5px solid #f9d976;border-radius:8px;padding:12px;font-size:13px;color:#7d5a00;margin-bottom:12px">⚠️ Use o Chrome para transcrição ao vivo gratuita.</div>
+      <div class="record-area">
+        <div id="record-timer-tour" class="record-timer-el">00:00</div>
+        <button id="btn-record-tour" class="btn-record-el" onclick="toggleRecord('tour')"><span id="record-icon-tour">🎙️</span></button>
+        <div id="record-status-tour" class="record-status-el">Toque para começar a gravar</div>
+        <button id="btn-stop-tour" onclick="stopRecording('tour')" style="display:none;background:var(--danger);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px">⏹️ Parar</button>
+      </div>
+      <div class="live-label"><span class="dot-live" id="dot-live-tour"></span><span>Transcrição ao vivo</span></div>
+      <div class="live-box" id="live-box-tour">
+        <span id="transcript-final-tour"></span><span class="interim" id="transcript-interim-tour"></span>
+      </div>
+      <div class="mt-12 flex-row" id="btn-analyze-wrap-tour" style="display:none">
+        <button class="btn btn-primary" onclick="analyzeConsulta('tour')">✨ Gerar Análise do Tour</button>
+        <button class="btn btn-outline btn-sm" onclick="resetRec('tour')" style="width:auto;padding:13px 16px">🔄</button>
+      </div>
+    </div>
+
+    <!-- GRAVAÇÃO AVALIAÇÃO -->
+    <div class="card rec-panel" id="panel-avaliacao" style="display:none">
+      <div class="card-title">🔬 Avaliação Clínica</div>
+      <div class="record-area">
+        <div id="record-timer-avaliacao" class="record-timer-el">00:00</div>
+        <button id="btn-record-avaliacao" class="btn-record-el" onclick="toggleRecord('avaliacao')"><span id="record-icon-avaliacao">🎙️</span></button>
+        <div id="record-status-avaliacao" class="record-status-el">Toque para começar a gravar</div>
+        <button id="btn-stop-avaliacao" onclick="stopRecording('avaliacao')" style="display:none;background:var(--danger);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px">⏹️ Parar</button>
+      </div>
+      <div class="live-label"><span class="dot-live" id="dot-live-avaliacao"></span><span>Transcrição ao vivo</span></div>
+      <div class="live-box" id="live-box-avaliacao">
+        <span id="transcript-final-avaliacao"></span><span class="interim" id="transcript-interim-avaliacao"></span>
+      </div>
+      <div class="mt-12 flex-row" id="btn-analyze-wrap-avaliacao" style="display:none">
+        <button class="btn btn-primary" onclick="analyzeConsulta('avaliacao')">✨ Gerar Análise da Avaliação</button>
+        <button class="btn btn-outline btn-sm" onclick="resetRec('avaliacao')" style="width:auto;padding:13px 16px">🔄</button>
+      </div>
+    </div>
+
+    <!-- GRAVAÇÃO COMERCIAL -->
+    <div class="card rec-panel" id="panel-comercial" style="display:none">
+      <div class="card-title">💼 Comercial — Negociação</div>
+      <div class="record-area">
+        <div id="record-timer-comercial" class="record-timer-el">00:00</div>
+        <button id="btn-record-comercial" class="btn-record-el" onclick="toggleRecord('comercial')"><span id="record-icon-comercial">🎙️</span></button>
+        <div id="record-status-comercial" class="record-status-el">Toque para começar a gravar</div>
+      </div>
+      <div class="live-label"><span class="dot-live" id="dot-live-comercial"></span><span>Transcrição ao vivo</span></div>
+      <div class="live-box" id="live-box-comercial">
+        <span id="transcript-final-comercial"></span><span class="interim" id="transcript-interim-comercial"></span>
+      </div>
+      <div class="mt-12 flex-row" id="btn-analyze-wrap-comercial" style="display:none">
+        <button class="btn btn-primary" onclick="analyzeConsulta('comercial')">✨ Gerar Análise Comercial</button>
+        <button class="btn btn-outline btn-sm" onclick="resetRec('comercial')" style="width:auto;padding:13px 16px">🔄</button>
+      </div>
+    </div>
+
+    <div class="processing-card" id="processing-card">
+      <div class="card-title">⏳ Analisando...</div>
+      <ul class="processing-steps">
+        <li id="step-summary"><span class="step-icon">📄</span> Gerando resumo...</li>
+        <li id="step-profile"><span class="step-icon">👤</span> Montando perfil...</li>
+        <li id="step-save"><span class="step-icon">💾</span> Salvando na nuvem...</li>
+      </ul>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div id="results-wrap" style="display:none">
+      <div style="display:flex;gap:4px;margin-bottom:12px;background:var(--bg);border-radius:10px;padding:4px">
+        <button class="tab-btn active" id="res-tab-tour" onclick="switchResult('tour')">🗺️ Tour</button>
+        <button class="tab-btn" id="res-tab-avaliacao" onclick="switchResult('avaliacao')">🔬 Avaliação</button>
+        <button class="tab-btn" id="res-tab-comercial" onclick="switchResult('comercial')">💼 Comercial</button>
+      </div>
+
+      <div id="result-panel-tour">
+        <div class="card"><div class="card-title">📝 Resumo do Tour</div><div class="result-text" id="result-resumo-tour"></div></div>
+        <div class="card"><div class="card-title">🔎 Perfil de Conexão</div><div id="result-perfil-tour"></div></div>
+        <div class="card"><div class="card-title">🧠 Perfil Comportamental</div><div id="result-comportamento-tour"></div></div>
+        <div class="card"><div class="card-title">➡️ Transição para a Avaliação</div><div id="result-venda-tour"></div></div>
+        <div class="card"><div class="card-title">💡 O que poderia melhorar</div><div id="result-melhorias-tour"></div></div>
+      </div>
+
+      <div id="result-panel-avaliacao" style="display:none">
+        <div class="card"><div class="card-title">📝 Transcrição — Avaliação</div><div class="result-text" id="result-transcricao-avaliacao"></div></div>
+        <div class="card"><div class="card-title">📄 Resumo Clínico</div><div class="result-text" id="result-resumo-avaliacao"></div></div>
+        <div class="card"><div class="card-title">👤 Perfil do Paciente</div><div id="result-perfil-grid-avaliacao" class="profile-grid"></div><div class="result-label">Observações</div><div class="result-text" id="result-perfil-obs-avaliacao"></div></div>
+        <div class="card"><div class="card-title">🧠 Perfil Comportamental</div><div id="result-comportamento-avaliacao"></div></div>
+        <div class="card"><div class="card-title">💰 Estratégia de Venda</div><div id="result-venda-avaliacao"></div></div>
+        <div class="card"><div class="card-title">💡 O que poderia melhorar</div><div id="result-melhorias-avaliacao"></div></div>
+      </div>
+
+      <div id="result-panel-comercial" style="display:none">
+        <div class="card"><div class="card-title">📝 Transcrição — Relacionamento</div><div class="result-text" id="result-transcricao-comercial"></div></div>
+        <div class="card"><div class="card-title">📄 Resumo da Conversa</div><div class="result-text" id="result-resumo-comercial"></div></div>
+        <div class="card"><div class="card-title">🧠 Perfil Comportamental</div><div id="result-comportamento-comercial"></div></div>
+        <div class="card"><div class="card-title">💰 Estratégia de Fechamento</div><div id="result-venda-comercial"></div></div>
+        <div class="card"><div class="card-title">💡 O que poderia melhorar</div><div id="result-melhorias-comercial"></div></div>
+      </div>
+
+      <div id="btn-ir-avaliacao" style="display:none;margin-bottom:10px">
+        <button class="btn btn-primary" onclick="irParaAvaliacao()" style="background:#2dc653;border:none">🔬 Gravar Avaliação deste paciente</button>
+      </div>
+      <div id="btn-ir-relacionamento" style="display:none;margin-bottom:10px">
+        <button class="btn btn-primary" onclick="irParaRelacionamento()" style="background:#8B2D42;border:none">💼 Gravar Relacionamento deste paciente</button>
+      </div>
+
+      <label class="perfil-incerto-row mt-8" for="chk-perfil-incerto">
+        <input type="checkbox" id="chk-perfil-incerto">
+        <div>
+          <div class="pi-label">⚠️ Perfil não encaixa</div>
+          <div class="pi-sub">Marque se o perfil DISC identificado não representa bem este paciente</div>
+        </div>
+      </label>
+
+      <div class="flex-row">
+        <button class="btn btn-secondary" onclick="saveConsulta()">💾 Salvar na Nuvem</button>
+        <button class="btn btn-outline" onclick="novaConsulta()">🔄 Nova</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTÓRICO TOUR -->
+  <div id="tab-hist-tour" style="display:none">
+    <div id="historico-tour-lista"></div>
+  </div>
+
+  <!-- HISTÓRICO AVALIAÇÃO -->
+  <div id="tab-hist-aval" style="display:none">
+    <div id="historico-aval-lista"></div>
+  </div>
+
+  <!-- HISTÓRICO RELACIONAMENTO (+ gravação para role Relacionamento) -->
+  <div id="tab-hist-rel" style="display:none">
+    <!-- Retornos pendentes -->
+    <div id="retornos-lista" style="margin-bottom:12px"></div>
+
+    <!-- Gravação Relacionamento (só para role Relacionamento) -->
+    <div id="gravacao-rel-wrap">
+      <div class="card">
+        <div class="card-title">👤 Paciente</div>
+        <div class="form-group" style="margin-bottom:0"><label>Nome</label><input type="text" id="com-pac-nome" placeholder="Nome do paciente"></div>
+        <input type="hidden" id="com-retorno-tipo" value="">
+        <input type="hidden" id="com-retorno-data" value="">
+      </div>
+      <div class="card">
+        <div class="card-title">💼 Gravação — Relacionamento</div>
+        <div class="record-area">
+          <div id="record-timer-comercial2" class="record-timer-el">00:00</div>
+          <button id="btn-record-comercial2" class="btn-record-el" onclick="toggleRecCom()"><span id="record-icon-comercial2">🎙️</span></button>
+          <div id="record-status-comercial2" class="record-status-el">Toque para começar a gravar</div>
+          <button id="btn-stop-comercial2" onclick="stopRecCom()" style="display:none;background:var(--danger);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:700;cursor:pointer;margin-top:4px">⏹️ Parar</button>
+        </div>
+        <div class="live-label"><span class="dot-live" id="dot-live-comercial2"></span><span>Transcrição ao vivo</span></div>
+        <div class="live-box" id="live-box-comercial2">
+          <span id="transcript-final-comercial2"></span><span class="interim" id="transcript-interim-comercial2"></span>
+        </div>
+        <div class="mt-12 flex-row" id="btn-analyze-wrap-comercial2" style="display:none">
+          <button class="btn btn-primary" onclick="analyzeComercial()">✨ Gerar Análise</button>
+          <button class="btn btn-outline btn-sm" onclick="resetRecCom()" style="width:auto;padding:13px 16px">🔄</button>
+        </div>
+      </div>
+      <div id="results-wrap-comercial" style="display:none">
+        <div class="card"><div class="card-title">📝 Resumo da Conversa</div><div class="result-text" id="result-resumo-comercial2"></div></div>
+        <div class="card"><div class="card-title">🧠 Perfil Comportamental</div><div id="result-comportamento-comercial2"></div></div>
+        <div class="card"><div class="card-title">🎯 Objeções & Estratégia de Fechamento</div><div id="result-venda-comercial2"></div></div>
+        <div class="card"><div class="card-title">💡 O que poderia melhorar</div><div id="result-melhorias-comercial2"></div></div>
+        <label class="perfil-incerto-row mt-8" for="chk-efetivado" onclick="toggleEfetivado()">
+          <input type="checkbox" id="chk-efetivado">
+          <div>
+            <div class="pi-label" style="color:#1a7a3a">✅ Efetivado</div>
+            <div class="pi-sub" style="color:#2a8a4a">Marque se o paciente fechou o tratamento</div>
+          </div>
+        </label>
+        <div id="efetivado-msg" style="display:none;align-items:center;gap:10px;background:#e6f9ec;border:2px solid #2dc653;border-radius:10px;padding:14px 16px;margin-bottom:8px">
+          <span style="font-size:22px">✅</span>
+          <div style="font-weight:700;color:#1a7a3a;font-size:14px">Paciente efetivado! Não precisa salvar.</div>
+        </div>
+        <div class="flex-row" id="btn-salvar-comercial-wrap">
+          <button class="btn btn-secondary" onclick="saveComercial()">💾 Salvar na Nuvem</button>
+          <button class="btn btn-outline" onclick="resetComercialTab()">🔄 Nova</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico Relacionamento -->
+    <div style="margin-top:16px">
+      <div id="historico-rel-lista"></div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div id="tab-config" style="display:none">
+    <div class="card">
+      <div class="card-title">🔑 Chave de API (Resumo/Perfil)</div>
+      <div class="text-muted" style="margin-bottom:12px">Para gerar resumo e perfil automaticamente.</div>
+      <div class="form-group"><label>OpenRouter API Key</label><input type="password" id="api-key-input" placeholder="sk-or-v1-..."></div>
+      <button class="btn btn-primary" onclick="saveApiKey()">Salvar</button>
+    </div>
+    <div class="card" id="admin-section" style="display:none">
+      <div class="card-title">👥 Usuários <span class="badge badge-admin">Admin</span></div>
+      <div id="users-list"></div>
+      <hr class="divider">
+      <div class="card-title" style="margin-top:8px">➕ Novo Usuário</div>
+      <div class="form-group"><label>Nome completo</label><input type="text" id="new-user-name" placeholder="Ex: Dr. João Silva"></div>
+      <div class="form-group"><label>Usuário (login)</label><input type="text" id="new-user-username" placeholder="Ex: joao.silva"></div>
+      <div class="form-group"><label>Senha</label><input type="password" id="new-user-pass" placeholder="Mínimo 4 caracteres"></div>
+      <div class="form-group"><label>Cargo</label><input type="text" id="new-user-role" placeholder="Ex: Dentista"></div>
+      <button class="btn btn-primary" onclick="adminCreateUser()">Criar Usuário</button>
+    </div>
+    <div class="card">
+      <div class="card-title">ℹ️ Minha Conta</div>
+      <div id="my-account-info"></div>
+      <hr class="divider">
+      <div class="form-group mt-8"><label>Nova senha</label><input type="password" id="new-pass" placeholder="Mínimo 4 caracteres"></div>
+      <button class="btn btn-secondary btn-sm" onclick="changePassword()">Alterar senha</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-detalhe">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-pac-nome">Consulta</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modal-content"></div>
+    <div class="flex-row mt-16">
+      <button id="btn-excluir-modal" class="btn btn-danger btn-sm" onclick="deleteConsulta()" style="display:none">🗑️ Excluir</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  SUPABASE
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://tnblcxdaygtagepmqmic.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_1_GoT3umo7o9YcrmbKbt3g_0foUsL_v';
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════
+let currentUser = null;
+let selectedUsername = null;
+
+const AVATAR_COLORS = ['#7c3aed','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'];
+function avatarColor(name) { let h=0; for(let i=0;i<name.length;i++) h=name.charCodeAt(i)+((h<<5)-h); return AVATAR_COLORS[Math.abs(h)%AVATAR_COLORS.length]; }
+
+function hashSimple(s) { let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h)+s.charCodeAt(i); return String(h>>>0); }
+
+async function loadLoginUsers() {
+  const { data: users } = await supa.from('usuarios').select('username,name,role').order('name');
+  const wrap = document.getElementById('user-list-wrap');
+  if (!users || !users.length) { wrap.innerHTML = '<div style="color:rgba(255,255,255,0.6);text-align:center;padding:20px">Nenhum usuário encontrado.</div>'; return; }
+  // ocultar aliases de email — aparecem como cards duplicados
+  const EMAIL_ALIASES = ['oralunic43@gmail.com'];
+  wrap.innerHTML = users.filter(u => !EMAIL_ALIASES.includes(u.username)).map(u => {
+    const initial = u.name.charAt(0).toUpperCase();
+    const color = avatarColor(u.name);
+    return `<div class="user-card" id="card-${u.username}" onclick="selectUser('${u.username}','${escHtml(u.name)}','${escHtml(u.role||'')}')">
+      <div class="user-avatar" style="background:${color}">${initial}</div>
+      <div class="user-card-info">
+        <div class="user-card-name">${escHtml(u.name)}</div>
+        <div class="user-card-role">${escHtml(u.role||'Usuário')}</div>
+      </div>
+      <div style="color:rgba(255,255,255,0.4);font-size:20px">›</div>
+    </div>`;
+  }).join('');
+}
+
+function selectUser(username, name, role) {
+  selectedUsername = username;
+  document.querySelectorAll('.user-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('card-' + username).classList.add('selected');
+  document.getElementById('pass-label').textContent = `Senha de ${name}`;
+  document.getElementById('pass-panel').classList.add('open');
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-pass').focus();
+  clearAuthMsgs();
+}
+
+function toggleEmailLogin() {
+  const p = document.getElementById('email-login-panel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (p.style.display === 'block') document.getElementById('email-login-input').focus();
+}
+
+async function doEmailLogin() {
+  const email = document.getElementById('email-login-input').value.trim();
+  const password = document.getElementById('email-login-pass').value;
+  clearAuthMsgs();
+  if (!email) return showError('Digite o e-mail.');
+  if (!password) return showError('Digite a senha.');
+  const btn = document.getElementById('btn-email-login');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    const { data, error } = await supa.from('usuarios').select('*').eq('username', email).single();
+    if (error || !data) { showError('Usuário não encontrado.'); return; }
+    if (data.password !== hashSimple(password)) { showError('Senha incorreta.'); return; }
+    currentUser = data;
+    localStorage.setItem('athenaUser', JSON.stringify(data));
+    window.open(location.href.split('#')[0] + '#app', '_blank');
+    btn.textContent = 'Aberto ✓';
+  } catch(e) { showError('Erro de conexão: ' + e.message); }
+  finally { btn.disabled = false; if (btn.textContent !== 'Aberto ✓') btn.textContent = 'Entrar'; }
+}
+
+async function doLogin() {
+  const password = document.getElementById('login-pass').value;
+  clearAuthMsgs();
+  if (!selectedUsername) return showError('Selecione um usuário.');
+  if (!password) return showError('Digite sua senha.');
+  document.getElementById('btn-login').disabled = true;
+  document.getElementById('btn-login').textContent = 'Entrando...';
+  try {
+    const { data, error } = await supa.from('usuarios').select('*').eq('username', selectedUsername).single();
+    if (error || !data) { showError('Usuário não encontrado.'); return; }
+    if (data.password !== hashSimple(password)) { showError('Senha incorreta.'); return; }
+    currentUser = data;
+    localStorage.setItem('athenaUser', JSON.stringify(data));
+    window.open(location.href.split('#')[0] + '#app', '_blank');
+    document.getElementById('btn-login').textContent = 'Aberto ✓';
+  } catch(e) { showError('Erro de conexão: ' + e.message); }
+  finally { document.getElementById('btn-login').disabled = false; }
+}
+
+function logout() {
+  localStorage.removeItem('athenaUser'); currentUser = null; selectedUsername = null;
+  location.hash = '';
+  showPage('page-login');
+  document.getElementById('user-badge').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  window.close();
+}
+
+function enterApp() {
+  showPage('page-main');
+  document.getElementById('user-badge').textContent = currentUser.name;
+  document.getElementById('user-badge').style.display = 'block';
+  document.getElementById('btn-logout').style.display = 'block';
+  const role = currentUser.role;
+  const isRelacionamento = role === 'Relacionamento';
+  const isCaptacao = role === 'Captação';
+  // aba Nova: oculta para Relacionamento
+  const tabNova = document.getElementById('tab-btn-nova');
+  if (tabNova) tabNova.style.display = isRelacionamento ? 'none' : '';
+  // gravação na aba Relacionamento: só para Relacionamento
+  const gravRelWrap = document.getElementById('gravacao-rel-wrap');
+  if (gravRelWrap) gravRelWrap.style.display = isRelacionamento ? 'block' : 'none';
+  // aba histórico Relacionamento: só para Relacionamento e Admin
+  const tabHistRel = document.getElementById('tab-btn-hist-rel');
+  if (tabHistRel) tabHistRel.style.display = (isRelacionamento || role === 'Administrador') ? '' : 'none';
+  // abas histórico Tour e Avaliação: visível para todos exceto Relacionamento puro (que vê só via modal)
+  const tabHistTour = document.getElementById('tab-btn-hist-tour');
+  const tabHistAval = document.getElementById('tab-btn-hist-aval');
+  if (tabHistTour) tabHistTour.style.display = isRelacionamento ? 'none' : '';
+  // Avaliação: Relacionamento também vê para consultar relatórios
+  if (tabHistAval) tabHistAval.style.display = '';
+  // Config: só para Admin
+  const tabConfig = document.querySelector('.tab-btn[onclick="switchTab(\'config\')"]');
+  if (tabConfig) tabConfig.style.display = role === 'Administrador' ? '' : 'none';
+  // aba gravação comercial (dentro de Nova): só Relacionamento
+  const tabCom = document.getElementById('rec-tab-comercial');
+  const recGrid = tabCom && tabCom.parentElement;
+  if (tabCom) tabCom.style.display = isRelacionamento ? '' : 'none';
+  if (recGrid) recGrid.style.gridTemplateColumns = isRelacionamento ? '1fr 1fr 1fr' : '1fr 1fr';
+  // aba resultado comercial: só Relacionamento
+  const resTabCom = document.getElementById('res-tab-comercial');
+  if (resTabCom) resTabCom.style.display = isRelacionamento ? '' : 'none';
+  switchTab(isRelacionamento ? 'hist-rel' : 'nova');
+  loadApiKey();
+}
+
+async function changePassword() {
+  const p = document.getElementById('new-pass').value;
+  if (!p || p.length < 4) return alert('Mínimo 4 caracteres.');
+  await supa.from('usuarios').update({ password: hashSimple(p) }).eq('username', currentUser.username);
+  currentUser.password = hashSimple(p);
+  sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+  document.getElementById('new-pass').value = '';
+  alert('Senha alterada!');
+}
+
+function showError(m) { const e=document.getElementById('login-error'); e.textContent=m; e.classList.add('visible'); }
+function showSuccess(m) { const e=document.getElementById('login-success'); e.textContent=m; e.classList.add('visible'); }
+function clearAuthMsgs() { document.getElementById('login-error').classList.remove('visible'); document.getElementById('login-success').classList.remove('visible'); }
+
+// ══════════════════════════════════════════════
+//  WEB SPEECH — DOIS PAINÉIS (tour / avaliacao)
+// ══════════════════════════════════════════════
+const recState = {
+  tour:      { recognition:null, isRecording:false, isPaused:false, finalTranscript:'', seconds:0, timer:null },
+  avaliacao: { recognition:null, isRecording:false, isPaused:false, finalTranscript:'', seconds:0, timer:null },
+  comercial: { recognition:null, isRecording:false, isPaused:false, finalTranscript:'', seconds:0, timer:null }
+};
+let activeRec = 'tour';
+
+function switchRec(tipo) {
+  activeRec = tipo;
+  ['tour','avaliacao','comercial'].forEach(t => {
+    document.getElementById('panel-'+t).style.display = tipo===t ? 'block' : 'none';
+    document.getElementById('rec-tab-'+t).classList.toggle('active', tipo===t);
+  });
+}
+
+function switchResult(tipo) {
+  ['tour','avaliacao','comercial'].forEach(t => {
+    document.getElementById('result-panel-'+t).style.display = tipo===t ? 'block' : 'none';
+    document.getElementById('res-tab-'+t).classList.toggle('active', tipo===t);
+  });
+}
+
+function initSpeech(tipo) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('no-support-msg').style.display='block'; return null; }
+  const s = recState[tipo];
+  const r = new SR();
+  r.lang='pt-BR'; r.continuous=true; r.interimResults=true;
+  r.onresult = e => {
+    let interim = '';
+    for (let i=e.resultIndex; i<e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) s.finalTranscript += t + ' ';
+      else interim += t;
+    }
+    document.getElementById('transcript-final-'+tipo).textContent = s.finalTranscript;
+    document.getElementById('transcript-interim-'+tipo).textContent = interim;
+    document.getElementById('live-box-'+tipo).scrollTop = 9999;
+  };
+  r.onerror = e => { if (e.error==='not-allowed') { alert('Permissão de microfone negada.'); stopRecording(tipo); } };
+  r.onend = () => { if (s.isRecording) { try { r.start(); } catch(e){} } };
+  return r;
+}
+
+function toggleRecord(tipo) {
+  const s = recState[tipo];
+  if (!s.isRecording && !s.isPaused) { startRecording(tipo); }
+  else if (s.isRecording) { pauseRecording(tipo); }
+  else if (s.isPaused) { resumeRecording(tipo); }
+}
+
+function startRecording(tipo) {
+  const s = recState[tipo];
+  s.recognition = initSpeech(tipo);
+  s.finalTranscript = '';
+  s.isPaused = false;
+  document.getElementById('transcript-final-'+tipo).textContent = '';
+  document.getElementById('transcript-interim-'+tipo).textContent = '';
+  document.getElementById('live-box-'+tipo).classList.add('active');
+  document.getElementById('dot-live-'+tipo).classList.add('on');
+  document.getElementById('btn-record-'+tipo).classList.add('recording');
+  document.getElementById('record-icon-'+tipo).textContent = '⏸️';
+  document.getElementById('record-status-'+tipo).textContent = 'Gravando... fale normalmente';
+  document.getElementById('record-timer-'+tipo).classList.add('on');
+  document.getElementById('btn-analyze-wrap-'+tipo).style.display = 'none';
+  document.getElementById('results-wrap').style.display = 'none';
+  const btnStop = document.getElementById('btn-stop-'+tipo);
+  if (btnStop) btnStop.style.display = 'flex';
+  s.isRecording = true; s.seconds = 0;
+  s.timer = setInterval(() => {
+    s.seconds++;
+    document.getElementById('record-timer-'+tipo).textContent =
+      String(Math.floor(s.seconds/60)).padStart(2,'0')+':'+String(s.seconds%60).padStart(2,'0');
+  }, 1000);
+  if (s.recognition) try { s.recognition.start(); } catch(e){}
+}
+
+function pauseRecording(tipo) {
+  const s = recState[tipo];
+  s.isRecording = false; s.isPaused = true;
+  clearInterval(s.timer);
+  if (s.recognition) { try { s.recognition.stop(); } catch(e){} s.recognition = null; }
+  document.getElementById('live-box-'+tipo).classList.remove('active');
+  document.getElementById('dot-live-'+tipo).classList.remove('on');
+  document.getElementById('btn-record-'+tipo).classList.remove('recording');
+  document.getElementById('btn-record-'+tipo).style.background = 'var(--warn)';
+  document.getElementById('record-icon-'+tipo).textContent = '▶️';
+  document.getElementById('record-status-'+tipo).textContent = '⏸️ Pausado — toque para continuar';
+  document.getElementById('transcript-interim-'+tipo).textContent = '';
+}
+
+function resumeRecording(tipo) {
+  const s = recState[tipo];
+  s.recognition = initSpeech(tipo);
+  s.isPaused = false; s.isRecording = true;
+  document.getElementById('live-box-'+tipo).classList.add('active');
+  document.getElementById('dot-live-'+tipo).classList.add('on');
+  document.getElementById('btn-record-'+tipo).classList.add('recording');
+  document.getElementById('btn-record-'+tipo).style.background = '';
+  document.getElementById('record-icon-'+tipo).textContent = '⏸️';
+  document.getElementById('record-status-'+tipo).textContent = 'Gravando... fale normalmente';
+  s.timer = setInterval(() => {
+    s.seconds++;
+    document.getElementById('record-timer-'+tipo).textContent =
+      String(Math.floor(s.seconds/60)).padStart(2,'0')+':'+String(s.seconds%60).padStart(2,'0');
+  }, 1000);
+  if (s.recognition) try { s.recognition.start(); } catch(e){}
+}
+
+function stopRecording(tipo) {
+  const s = recState[tipo];
+  s.isRecording = false; s.isPaused = false; clearInterval(s.timer);
+  if (s.recognition) { try { s.recognition.stop(); } catch(e){} s.recognition = null; }
+  document.getElementById('live-box-'+tipo).classList.remove('active');
+  document.getElementById('dot-live-'+tipo).classList.remove('on');
+  document.getElementById('btn-record-'+tipo).classList.remove('recording');
+  document.getElementById('btn-record-'+tipo).style.background = '';
+  document.getElementById('record-icon-'+tipo).textContent = '🎙️';
+  document.getElementById('record-status-'+tipo).textContent = 'Gravação encerrada ✓';
+  document.getElementById('transcript-interim-'+tipo).textContent = '';
+  const btnStop = document.getElementById('btn-stop-'+tipo);
+  if (btnStop) btnStop.style.display = 'none';
+  const hasText = s.finalTranscript.trim().length > 10;
+  if (hasText) {
+    document.getElementById('record-status-'+tipo).textContent = 'Analisando automaticamente...';
+    setTimeout(() => analyzeConsulta(tipo), 400);
+  } else {
+    document.getElementById('record-status-'+tipo).textContent = 'Nenhuma fala detectada. Tente novamente.';
+  }
+}
+
+function resetRec(tipo) {
+  const s = recState[tipo];
+  if (s.isRecording) stopRecording(tipo);
+  s.finalTranscript = ''; s.seconds = 0;
+  document.getElementById('transcript-final-'+tipo).textContent = '';
+  document.getElementById('transcript-interim-'+tipo).textContent = '';
+  document.getElementById('record-status-'+tipo).textContent = 'Toque para começar a gravar';
+  document.getElementById('record-timer-'+tipo).classList.remove('on');
+  document.getElementById('record-timer-'+tipo).textContent = '00:00';
+  document.getElementById('btn-analyze-wrap-'+tipo).style.display = 'none';
+}
+
+// ══════════════════════════════════════════════
+//  ANÁLISE VIA API
+// ══════════════════════════════════════════════
+let lastAnalysis = null;
+
+async function analyzeConsulta(tipo) {
+  const pacNome = document.getElementById('pac-nome').value.trim();
+  if (!pacNome) { alert('Informe o nome do paciente.'); return; }
+  const transcript = recState[tipo].finalTranscript;
+  if (!transcript.trim()) { alert('Grave uma consulta primeiro.'); return; }
+
+  const apiKey = localStorage.getItem('orApiKey') || '';
+
+  document.getElementById('btn-analyze-wrap-'+tipo).style.display = 'none';
+  showProcessing(true);
+  setStep('step-summary','active');
+
+  const isTour = tipo === 'tour' || tipo === 'comercial';
+
+  try {
+    const pacInfo = `Nome: ${pacNome}\nIdade: ${document.getElementById('pac-idade').value||'—'}\nGênero: ${document.getElementById('pac-genero').value||'—'}\nMotivo: ${document.getElementById('pac-motivo').value||'—'}`;
+    const isTourReal = tipo === 'tour';
+
+    const promptTour = `Analista comportamental da Oral Unic (clínica odontológica premium, Carlos Barbosa/RS). Etapa: TOUR — conexão inicial, não venda.
+DISC: Comunicador(I)=histórias/emoção, Executor(D)=direto/resultado, Planejador(S)=calmo/tímido, Analista(C)=perguntas técnicas. Se falar pouco: inferir pelo tom e contexto.
+Paciente: ${pacInfo}
+Transcrição: "${transcript.trim()}"
+Responda SOMENTE neste formato exato, sem texto fora das seções:
+===RESUMO===
+[até 80 palavras: como conheceu, queixa, tom emocional, impressão geral]
+===PERFIL===
+{"como_conheceu":"","queixa_principal":"","pretende_fazer":"","trabalho_ou_contexto":"","estado_emocional":"","observacoes":""}
+===COMPORTAMENTO===
+{"perfil_1":"","perfil_2":"","justificativa":"","como_agir":"","nao_fazer":"","gatilho_emocional":""}
+===VENDA===
+{"foco_da_venda":"","frase_de_fechamento":""}
+===MELHORIAS===
+{"pontos_positivos":["",""],"oportunidades_perdidas":["",""],"frases_sugeridas":["","",""],"proxima_etapa":""}`;
+
+    const promptAvaliacao = `Analista comportamental e clínico da Oral Unic (clínica odontológica premium, Carlos Barbosa/RS). Etapa: AVALIAÇÃO — diagnóstico + apresentação de tratamento.
+DISC: Comunicador(I)=estética/emoção, Executor(D)=resultado/prazo/custo, Planejador(S)=segurança/calmo, Analista(C)=técnico/dados. Se falar pouco: inferir pelo tom.
+Paciente: ${pacInfo}
+Transcrição: "${transcript.trim()}"
+Responda SOMENTE neste formato exato, sem texto fora das seções:
+===RESUMO===
+[até 100 palavras: queixas, diagnóstico, tratamento proposto, reação do paciente, interesse observado]
+===PERFIL===
+{"queixa_principal":"","historico_relevante":"","diagnostico_provavel":"","tratamento_proposto":"","retorno":"","nivel_interesse":"alto/médio/baixo","observacoes":""}
+===COMPORTAMENTO===
+{"perfil_1":"","perfil_2":"","justificativa":"","postura_observada":"","como_agir":"","nao_fazer":"","gatilho_principal":""}
+===VENDA===
+{"foco_da_venda":"","objecoes_provaveis":["","",""],"como_contornar":["","",""],"frase_de_fechamento":""}
+===MELHORIAS===
+{"pontos_positivos":["",""],"oportunidades_perdidas":["",""],"frases_sugeridas":["","",""],"proxima_etapa":""}`;
+
+    const prompt = isTourReal ? promptTour : promptAvaliacao;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey, 'HTTP-Referer':'https://oral-unic.vercel.app', 'X-Title':'Oral Unic' },
+      body: JSON.stringify({ model:'anthropic/claude-haiku-4-5', max_tokens:2000, messages:[{role:'user',content:prompt}] })
+    });
+    const data = await response.json();
+    if (!data.choices || !data.choices[0]) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.choices[0].message?.content || '';
+
+    setStep('step-summary','done');
+    setStep('step-profile','active');
+
+    const mR = text.match(/===RESUMO===\s*([\s\S]*?)(?====\w)/);
+    const mP = text.match(/===PERFIL===\s*([\s\S]*?)(?====\w)/);
+    const mC = text.match(/===COMPORTAMENTO===\s*([\s\S]*?)(?====\w)/);
+    const mV = text.match(/===VENDA===\s*([\s\S]*?)(?====\w)/);
+    const mM = text.match(/===MELHORIAS===\s*([\s\S]+)/);
+    const resumo = mR ? mR[1].trim() : text;
+    let perfil = {}, comportamento = {}, venda = {}, melhorias = {};
+    const safeParseJson = (raw) => { if (!raw) return {}; const s = raw.replace(/```json|```/g,'').trim(); try { return JSON.parse(s); } catch(e) { const m = s.match(/\{[\s\S]*\}/); if (m) { try { return JSON.parse(m[0]); } catch(e2){} } return {}; } };
+    perfil = safeParseJson(mP ? mP[1] : null);
+    comportamento = safeParseJson(mC ? mC[1] : null);
+    venda = safeParseJson(mV ? mV[1] : null);
+    melhorias = safeParseJson(mM ? mM[1] : null);
+
+    const elTransc = document.getElementById('result-transcricao-'+tipo);
+    if (elTransc) elTransc.textContent = transcript.trim();
+    if (isTourReal) {
+      const elResumoTour = document.getElementById('result-resumo-tour');
+      if (elResumoTour) elResumoTour.textContent = resumo;
+      renderPerfilTour(perfil);
+    } else {
+      document.getElementById('result-resumo-avaliacao').textContent = resumo;
+      renderPerfil(perfil, pacNome, 'avaliacao');
+    }
+    renderComportamento(comportamento, tipo);
+    renderVenda(venda, tipo);
+    renderMelhorias(melhorias, tipo);
+
+    if (!lastAnalysis) lastAnalysis = { pacNome, pacIdade: document.getElementById('pac-idade').value, pacGenero: document.getElementById('pac-genero').value, pacMotivo: document.getElementById('pac-motivo').value };
+    lastAnalysis[tipo] = { transcricao: transcript.trim(), resumo, perfil, comportamento, venda, melhorias };
+
+    // Salvar Tour automaticamente ao gerar relatório
+    if (isTourReal) {
+      try {
+        await supa.from('consultas').insert({
+          username: currentUser.username,
+          pac_nome: pacNome,
+          pac_idade: document.getElementById('pac-idade').value || '',
+          pac_genero: document.getElementById('pac-genero').value || '',
+          pac_motivo: document.getElementById('pac-motivo').value || '',
+          tour_transcricao: transcript.trim(),
+          tour_resumo: resumo,
+          tour_perfil_json: JSON.stringify(perfil),
+          tour_comportamento_json: JSON.stringify(comportamento),
+          tour_venda_json: JSON.stringify(venda),
+          tour_melhorias_json: JSON.stringify(melhorias),
+          created_by: currentUser.name,
+          transcricao: '', resumo: '', perfil_json: '{}', comportamento_json: '{}', venda_json: '{}'
+        });
+        loadHistoricoEtapa('tour');
+      } catch(e) { console.error('Erro ao salvar tour:', e); }
+    }
+
+    setStep('step-profile','done');
+    showProcessing(false);
+    document.getElementById('results-wrap').style.display = 'block';
+    switchResult(tipo);
+
+    // botões de passagem de bastão
+    const btnIrAvaliacao = document.getElementById('btn-ir-avaliacao');
+    const btnIrRel = document.getElementById('btn-ir-relacionamento');
+    if (btnIrAvaliacao) btnIrAvaliacao.style.display = tipo === 'tour' ? 'flex' : 'none';
+    if (btnIrRel) btnIrRel.style.display = tipo === 'avaliacao' ? 'flex' : 'none';
+
+  } catch(err) {
+    showProcessing(false);
+    document.getElementById('btn-analyze-wrap-'+tipo).style.display = 'flex';
+    alert('Erro na análise: ' + err.message);
+  }
+}
+
+const PERFIL_CORES = {
+  'Comunicador': { bg:'#d4e84a', bgLight:'#f5facc', border:'#b8d400', icon:'I', letra:'I', desc:'Comunicativo · Persuasivo · Entusiasmado · Otimista' },
+  'Executor':    { bg:'#e63946', bgLight:'#fde8ea', border:'#c1121f', icon:'D', letra:'D', desc:'Auto confiante · Dominante · Competitivo · Destemido' },
+  'Planejador':  { bg:'#2dc653', bgLight:'#e6f9ec', border:'#1a9e3f', icon:'S', letra:'S', desc:'Estável · Paciente · Calmo · Conservador' },
+  'Analista':    { bg:'#00b4d8', bgLight:'#e0f7fb', border:'#0096c7', icon:'C', letra:'C', desc:'Preciso · Atento aos detalhes · Organizado · Diligente' },
+};
+
+function renderComportamento(c, sufixo) {
+  const wrap = document.getElementById('result-comportamento-'+(sufixo||'avaliacao'));
+  if (!c || !c.perfil_1) { wrap.innerHTML = '<p style="color:var(--text-muted);font-size:14px">Perfil não identificado.</p>'; return; }
+  const p1 = PERFIL_CORES[c.perfil_1] || { bg:'#888', bgLight:'#f4f4f4', border:'#888', letra:'?', desc:'' };
+  const p2 = c.perfil_2 ? (PERFIL_CORES[c.perfil_2] || null) : null;
+  wrap.innerHTML = `
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div style="flex:1;background:${p1.bgLight};border:2.5px solid ${p1.border};border-radius:12px;padding:14px;text-align:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:${p1.bg};color:white;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">${p1.letra}</div>
+        <div style="font-size:16px;font-weight:700;color:#1a1a1a">${escHtml(c.perfil_1)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4">${escHtml(p1.desc)}</div>
+        <div style="background:${p1.bg};color:white;font-size:10px;font-weight:700;border-radius:20px;padding:2px 10px;display:inline-block;margin-top:8px">DOMINANTE</div>
+      </div>
+      ${p2?`<div style="flex:1;background:${p2.bgLight};border:2.5px solid ${p2.border};border-radius:12px;padding:14px;text-align:center">
+        <div style="width:48px;height:48px;border-radius:50%;background:${p2.bg};color:white;font-size:22px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 8px">${p2.letra}</div>
+        <div style="font-size:16px;font-weight:700;color:#1a1a1a">${escHtml(c.perfil_2)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4">${escHtml(p2.desc)}</div>
+        <div style="background:${p2.bg};color:white;font-size:10px;font-weight:700;border-radius:20px;padding:2px 10px;display:inline-block;margin-top:8px">SECUNDÁRIO</div>
+      </div>`:''}
+    </div>
+    ${c.justificativa?`<div style="font-size:13px;line-height:1.6;color:var(--text);margin-bottom:10px;background:var(--bg);border-radius:8px;padding:12px">${escHtml(c.justificativa)}</div>`:''}
+    ${c.postura_observada?`<div style="margin-bottom:8px"><span style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">Postura observada</span><div style="font-size:13px;margin-top:3px">${escHtml(c.postura_observada)}</div></div>`:''}
+    ${(c.gatilho_emocional||c.gatilho_principal)?`<div style="margin-bottom:8px;background:#fff8e1;border-radius:8px;padding:10px;border:1px solid #ffe082"><span style="font-size:11px;font-weight:700;text-transform:uppercase;color:#f59f00">🎯 Gatilho principal</span><div style="font-size:13px;margin-top:3px">${escHtml(c.gatilho_emocional||c.gatilho_principal)}</div></div>`:''}
+    ${c.momento_ideal_contato?`<div style="margin-bottom:8px;background:#e8f4fd;border-radius:8px;padding:10px;border:1px solid #90caf9"><span style="font-size:11px;font-weight:700;text-transform:uppercase;color:#1565c0">📅 Momento ideal para contato</span><div style="font-size:13px;margin-top:3px">${escHtml(c.momento_ideal_contato)}</div></div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      ${c.como_agir?`<div style="background:#e8f5e9;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#2e7d32;margin-bottom:3px">✅ COMO AGIR</div><div style="font-size:12px;line-height:1.5">${escHtml(c.como_agir)}</div></div>`:''}
+      ${c.nao_fazer?`<div style="background:#fdecea;border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:700;color:#c62828;margin-bottom:3px">🚫 NÃO FAZER</div><div style="font-size:12px;line-height:1.5">${escHtml(c.nao_fazer)}</div></div>`:''}
+    </div>`;
+}
+
+function renderPerfilTour(p) {
+  const wrap = document.getElementById('result-perfil-tour');
+  if (!wrap) return;
+  if (!p || !p.como_conheceu) { wrap.innerHTML = '<p style="color:var(--text-muted);font-size:14px">—</p>'; return; }
+  const items = [
+    { label:'Como nos conheceu', value: p.como_conheceu },
+    { label:'Principal queixa', value: p.queixa_principal },
+    { label:'O que pretende fazer', value: p.pretende_fazer },
+    { label:'Trabalho / Contexto de vida', value: p.trabalho_ou_contexto },
+    { label:'Estado emocional', value: p.estado_emocional },
+    { label:'Observações', value: p.observacoes },
+  ];
+  wrap.innerHTML = items.filter(i=>i.value).map(i=>`
+    <div style="margin-bottom:10px;background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:4px">${escHtml(i.label)}</div>
+      <div style="font-size:14px;line-height:1.5">${escHtml(i.value)}</div>
+    </div>`).join('');
+}
+
+function renderVenda(v, sufixo) {
+  const wrap = document.getElementById('result-venda-'+(sufixo||'avaliacao'));
+  if (!v || !v.foco_da_venda) { wrap.innerHTML = '<p style="color:var(--text-muted);font-size:14px">Análise não disponível.</p>'; return; }
+  const isTourSufixo = sufixo === 'tour';
+  if (isTourSufixo) {
+    wrap.innerHTML = `
+      <div style="margin-bottom:12px">
+        <div class="result-label">Como preparar o paciente para a avaliação</div>
+        <div class="result-text">${escHtml(v.foco_da_venda)}</div>
+      </div>
+      ${v.frase_de_fechamento?`<div style="background:var(--primary);border-radius:10px;padding:14px;color:white">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;opacity:0.8;margin-bottom:6px">💬 Frase de transição para a avaliação</div>
+        <div style="font-size:15px;font-style:italic">"${escHtml(v.frase_de_fechamento)}"</div>
+      </div>`:''}`;
+    return;
+  }
+  const objecoes = (v.objecoes_provaveis||[]).map((o,i) => `
+    <div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--danger);text-transform:uppercase;margin-bottom:4px">⚠️ Objeção ${i+1}</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${escHtml(o)}</div>
+      <div style="font-size:13px;color:var(--primary)">✅ ${escHtml((v.como_contornar||[])[i]||'—')}</div>
+    </div>`).join('');
+  wrap.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div class="result-label">Como focar a apresentação do tratamento</div>
+      <div class="result-text">${escHtml(v.foco_da_venda)}</div>
+    </div>
+    ${objecoes?`<div style="margin-bottom:12px">
+      <div class="result-label">Objeções prováveis e como contornar</div>
+      ${objecoes}
+    </div>`:''}
+    <div style="background:var(--primary);border-radius:10px;padding:14px;color:white">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;opacity:0.8;margin-bottom:6px">💡 Frase de fechamento</div>
+      <div style="font-size:15px;font-style:italic">"${escHtml(v.frase_de_fechamento||'—')}"</div>
+    </div>`;
+}
+
+function renderMelhorias(m, sufixo) {
+  const wrap = document.getElementById('result-melhorias-'+(sufixo||'avaliacao'));
+  if (!wrap) return;
+  if (!m || (!m.pontos_positivos && !m.oportunidades_perdidas && !m.frases_sugeridas)) {
+    wrap.innerHTML = '<p style="color:var(--text-muted);font-size:14px">Sem sugestões disponíveis.</p>';
+    return;
+  }
+  const listItems = (arr) => (arr||[]).map(i => `<li style="font-size:13px;line-height:1.6;padding:4px 0;border-bottom:1px solid var(--border)">${escHtml(i)}</li>`).join('');
+  const frases = (arr) => (arr||[]).map(i => `<div style="background:var(--primary-light);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:10px 12px;margin-bottom:8px;font-size:13px;font-style:italic;color:var(--primary-dark)">"${escHtml(i)}"</div>`).join('');
+  wrap.innerHTML = `
+    ${m.pontos_positivos&&m.pontos_positivos.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#2e7d32;margin-bottom:8px;display:flex;align-items:center;gap:6px">✅ O que foi bem</div>
+      <ul style="list-style:none;padding:0">${listItems(m.pontos_positivos)}</ul>
+    </div>`:''}
+    ${m.oportunidades_perdidas&&m.oportunidades_perdidas.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:#e65100;margin-bottom:8px;display:flex;align-items:center;gap:6px">⚠️ Oportunidades que poderiam ter sido exploradas</div>
+      <ul style="list-style:none;padding:0">${listItems(m.oportunidades_perdidas)}</ul>
+    </div>`:''}
+    ${m.frases_sugeridas&&m.frases_sugeridas.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--primary);margin-bottom:8px">💬 Frases que você poderia ter usado</div>
+      ${frases(m.frases_sugeridas)}
+    </div>`:''}
+    ${m.proxima_etapa?`
+    <div style="background:#1a3a2a;border-radius:10px;padding:14px;color:white">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;opacity:0.7;margin-bottom:6px">➡️ Orientação para a próxima etapa</div>
+      <div style="font-size:14px;line-height:1.6">${escHtml(m.proxima_etapa)}</div>
+    </div>`:''}`;
+}
+
+function renderPerfil(perfil, nome, sufixo) {
+  const s = sufixo || 'avaliacao';
+  const labels = { queixa_principal:'Queixa Principal', historico_relevante:'Histórico', diagnostico_provavel:'Diagnóstico', tratamento_proposto:'Tratamento', nivel_interesse:'Nível de interesse', retorno:'Retorno' };
+  const grid = document.getElementById('result-perfil-grid-'+s);
+  if (!grid) return;
+  let html = `<div class="profile-item"><div class="profile-item-label">Nome</div><div class="profile-item-value">${escHtml(nome)}</div></div>`;
+  const idade = document.getElementById('pac-idade').value;
+  if (idade) html += `<div class="profile-item"><div class="profile-item-label">Idade</div><div class="profile-item-value">${escHtml(idade)}</div></div>`;
+  for (const [k, label] of Object.entries(labels)) if (perfil[k]) html += `<div class="profile-item"><div class="profile-item-label">${label}</div><div class="profile-item-value">${escHtml(String(perfil[k]))}</div></div>`;
+  grid.innerHTML = html;
+  document.getElementById('result-perfil-obs-'+s).textContent = perfil.observacoes || '—';
+}
+
+// ══════════════════════════════════════════════
+//  SALVAR / HISTÓRICO — SUPABASE
+// ══════════════════════════════════════════════
+let currentConsultaId = null;
+
+async function saveConsulta() {
+  if (!lastAnalysis) { alert('Nenhuma análise para salvar.'); return; }
+  const btn = document.querySelector('#results-wrap .btn-secondary');
+  const perfilIncerto = document.getElementById('chk-perfil-incerto').checked;
+  btn.disabled = true; btn.textContent = '💾 Salvando...';
+  try {
+    const tour = lastAnalysis.tour || {};
+    const aval = lastAnalysis.avaliacao || {};
+    const com = lastAnalysis.comercial || {};
+    const { error } = await supa.from('consultas').insert({
+      username: currentUser.username,
+      pac_nome: lastAnalysis.pacNome,
+      pac_idade: lastAnalysis.pacIdade,
+      pac_genero: lastAnalysis.pacGenero,
+      pac_motivo: lastAnalysis.pacMotivo,
+      transcricao: aval.transcricao || tour.transcricao || '',
+      resumo: aval.resumo || '',
+      perfil_obs: (aval.perfil||{}).observacoes || '',
+      perfil_json: JSON.stringify(aval.perfil || {}),
+      comportamento_json: JSON.stringify(aval.comportamento || tour.comportamento || {}),
+      venda_json: JSON.stringify(aval.venda || tour.venda || {}),
+      tour_transcricao: tour.transcricao || '',
+      tour_resumo: tour.resumo || '',
+      tour_perfil_json: JSON.stringify(tour.perfil || {}),
+      tour_comportamento_json: JSON.stringify(tour.comportamento || {}),
+      tour_venda_json: JSON.stringify(tour.venda || {}),
+      tour_melhorias_json: JSON.stringify(tour.melhorias || {}),
+      melhorias_json: JSON.stringify(aval.melhorias || {}),
+      comercial_transcricao: com.transcricao || '',
+      comercial_comportamento_json: JSON.stringify(com.comportamento || {}),
+      comercial_venda_json: JSON.stringify(com.venda || {}),
+      comercial_melhorias_json: JSON.stringify(com.melhorias || {}),
+      perfil_incerto: perfilIncerto,
+      created_by: currentUser.name
+    });
+    if (error) throw error;
+    alert('Consulta salva na nuvem! ☁️');
+    novaConsulta();
+    switchTab('hist-aval');
+  } catch(e) { alert('Erro ao salvar: ' + e.message); }
+  finally { btn.disabled = false; btn.textContent = '💾 Salvar na Nuvem'; }
+}
+
+async function loadHistoricoEtapa(etapa) {
+  const elMap = { tour: 'historico-tour-lista', avaliacao: 'historico-aval-lista', relacionamento: 'historico-rel-lista' };
+  const el = document.getElementById(elMap[etapa]);
+  if (!el) return;
+  el.innerHTML = '<div class="empty-state"><div class="spinner" style="margin:0 auto"></div></div>';
+  let query = supa.from('consultas').select('*').order('created_at', { ascending: false });
+  if (etapa === 'relacionamento') query = query.eq('is_comercial', true);
+  else if (etapa === 'tour') query = query.neq('is_comercial', true).not('tour_transcricao','is',null).neq('tour_transcricao','');
+  else if (etapa === 'avaliacao') query = query.neq('is_comercial', true).not('transcricao','is',null).neq('transcricao','');
+  const { data, error } = await query;
+  if (error) { el.innerHTML = `<div class="empty-state"><p>Erro: ${error.message}</p></div>`; return; }
+  if (!data || !data.length) { el.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Nenhum registro ainda.</p></div>`; return; }
+  el.innerHTML = data.map(c => {
+    const rb = etapa === 'relacionamento' ? retornoBadge(c.retorno_tipo, c.retorno_data) : null;
+    const retHtml = rb ? `<div style="margin-top:4px"><span class="retorno-badge ${rb.badge}" style="font-size:11px">${rb.label}</span></div>` : '';
+    const resumoText = etapa === 'tour' ? (c.tour_resumo || c.resumo || '') : (c.resumo || '');
+    return `<div class="consulta-item" onclick="openConsulta('${c.id}','${etapa}')">
+      <div class="consulta-item-name">👤 ${escHtml(c.pac_nome)}</div>
+      <div class="consulta-item-meta">📅 ${formatDate(c.created_at)} · ${escHtml(c.created_by||'—')}</div>
+      ${resumoText?`<div class="consulta-item-preview">${escHtml(resumoText.substring(0,120))}${resumoText.length>120?'...':''}</div>`:''}
+      ${c.perfil_incerto?`<div style="margin-top:4px"><span class="pi-badge">⚠️ Perfil não encaixa</span></div>`:''}
+      ${retHtml}
+    </div>`;
+  }).join('');
+}
+async function loadHistorico() { loadHistoricoEtapa('avaliacao'); }
+
+async function openConsulta(id, etapaOrigem) {
+  const { data: c } = await supa.from('consultas').select('*').eq('id', id).single();
+  if (!c) return;
+  currentConsultaId = id;
+  document.getElementById('modal-pac-nome').innerHTML = '👤 ' + escHtml(c.pac_nome) + (c.perfil_incerto ? ' <span class="pi-badge">⚠️ Perfil não encaixa</span>' : '');
+
+  let perfil = {}, comp = {}, venda = {}, melhorias = {}, tourMelhorias = {}, comMelhorias = {};
+  try { perfil = JSON.parse(c.perfil_json || '{}'); } catch(e){}
+  try { comp = JSON.parse(c.comportamento_json || '{}'); } catch(e){}
+  try { venda = JSON.parse(c.venda_json || '{}'); } catch(e){}
+  try { melhorias = JSON.parse(c.melhorias_json || '{}'); } catch(e){}
+  try { tourMelhorias = JSON.parse(c.tour_melhorias_json || '{}'); } catch(e){}
+  try { comMelhorias = JSON.parse(c.comercial_melhorias_json || '{}'); } catch(e){}
+
+  // bloco de dados básicos
+  let basicItems = '';
+  if (c.pac_idade) basicItems += `<div class="profile-item"><div class="profile-item-label">Idade</div><div class="profile-item-value">${escHtml(c.pac_idade)}</div></div>`;
+  if (c.pac_genero) basicItems += `<div class="profile-item"><div class="profile-item-label">Gênero</div><div class="profile-item-value">${escHtml(c.pac_genero)}</div></div>`;
+  if (c.pac_motivo) basicItems += `<div class="profile-item"><div class="profile-item-label">Motivo</div><div class="profile-item-value">${escHtml(c.pac_motivo)}</div></div>`;
+  basicItems += `<div class="profile-item"><div class="profile-item-label">Data</div><div class="profile-item-value">${formatDate(c.created_at)}</div></div>`;
+  basicItems += `<div class="profile-item"><div class="profile-item-label">Registrado por</div><div class="profile-item-value">${escHtml(c.created_by||'—')}</div></div>`;
+
+  // bloco perfil clínico
+  const clinLabels = { queixa_principal:'Queixa Principal', historico_relevante:'Histórico', diagnostico_provavel:'Diagnóstico', tratamento_proposto:'Tratamento', retorno:'Retorno' };
+  let clinItems = '';
+  for (const [k, label] of Object.entries(clinLabels)) if (perfil[k]) clinItems += `<div class="profile-item"><div class="profile-item-label">${label}</div><div class="profile-item-value">${escHtml(String(perfil[k]))}</div></div>`;
+
+  // compatibilidade com formato antigo (campo "tipo")
+  if (!comp.perfil_1 && comp.tipo) { comp.perfil_1 = comp.tipo; }
+
+  // bloco DISC
+  let discHtml = '';
+  if (comp.perfil_1) {
+    const p1 = PERFIL_CORES[comp.perfil_1] || { bg:'#888', bgLight:'#f4f4f4', border:'#888', letra:'?', desc:'' };
+    const p2 = comp.perfil_2 ? (PERFIL_CORES[comp.perfil_2] || null) : null;
+    discHtml = `<div style="margin-top:14px"><div class="result-label">🧠 Perfil Comportamental</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1;background:${p1.bgLight};border:2px solid ${p1.border};border-radius:10px;padding:12px;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:${p1.bg};color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${p1.letra}</div>
+          <div style="font-size:14px;font-weight:700">${escHtml(comp.perfil_1)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${escHtml(p1.desc)}</div>
+        </div>
+        ${p2?`<div style="flex:1;background:${p2.bgLight};border:2px solid ${p2.border};border-radius:10px;padding:12px;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:${p2.bg};color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${p2.letra}</div>
+          <div style="font-size:14px;font-weight:700">${escHtml(comp.perfil_2)}</div>
+          <div style="font-size:10px;color:var(--text-muted)">${escHtml(p2.desc)}</div>
+        </div>`:''}
+      </div>
+      ${comp.justificativa?`<div style="font-size:12px;line-height:1.5;background:var(--bg);border-radius:8px;padding:10px">${escHtml(comp.justificativa)}</div>`:''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px">
+        ${comp.como_agir?`<div style="background:#e8f5e9;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#2e7d32;margin-bottom:2px">✅ COMO AGIR</div><div style="font-size:11px">${escHtml(comp.como_agir)}</div></div>`:''}
+        ${comp.nao_fazer?`<div style="background:#fdecea;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#c62828;margin-bottom:2px">🚫 NÃO FAZER</div><div style="font-size:11px">${escHtml(comp.nao_fazer)}</div></div>`:''}
+      </div>
+    </div>`;
+  }
+
+  // bloco venda
+  let vendaHtml = '';
+  if (venda.foco_da_venda) {
+    const objs = (venda.objecoes_provaveis||[]).map((o,i) => `
+      <div style="background:var(--bg);border-radius:8px;padding:10px;border:1px solid var(--border);margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:2px">⚠️ ${escHtml(o)}</div>
+        <div style="font-size:12px;color:var(--primary)">✅ ${escHtml((venda.como_contornar||[])[i]||'—')}</div>
+      </div>`).join('');
+    vendaHtml = `<div style="margin-top:14px"><div class="result-label">💰 Estratégia de Venda</div>
+      <div class="result-text" style="margin-bottom:8px;font-size:13px">${escHtml(venda.foco_da_venda)}</div>
+      ${objs}
+      ${venda.frase_de_fechamento?`<div style="background:var(--primary);border-radius:8px;padding:12px;color:white;font-size:13px;font-style:italic">"${escHtml(venda.frase_de_fechamento)}"</div>`:''}
+    </div>`;
+  }
+
+  const isRelacionamento = currentUser.role === 'Relacionamento';
+
+  // tour
+  let tourComp = {}, tourVenda = {}, tourPerfil = {};
+  try { tourComp = JSON.parse(c.tour_comportamento_json || '{}'); } catch(e){}
+  try { tourVenda = JSON.parse(c.tour_venda_json || '{}'); } catch(e){}
+  try { tourPerfil = JSON.parse(c.tour_perfil_json || '{}'); } catch(e){}
+  if (!tourComp.perfil_1 && tourComp.tipo) tourComp.perfil_1 = tourComp.tipo;
+
+  // comercial
+  let comComp = {}, comVenda = {};
+  try { comComp = JSON.parse(c.comercial_comportamento_json || '{}'); } catch(e){}
+  try { comVenda = JSON.parse(c.comercial_venda_json || '{}'); } catch(e){}
+
+  function buildPerfilConexaoBlock(p) {
+    const campos = [
+      { key: 'como_conheceu', label: 'Como nos conheceu' },
+      { key: 'queixa_principal', label: 'Principal queixa' },
+      { key: 'pretende_fazer', label: 'O que pretende fazer' },
+      { key: 'trabalho_ou_contexto', label: 'Trabalho / Contexto de vida' },
+      { key: 'estado_emocional', label: 'Estado emocional' },
+      { key: 'observacoes', label: 'Observações' },
+    ];
+    const itens = campos.filter(c => p[c.key] && String(p[c.key]).trim()).map(c =>
+      `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:0.5px;text-transform:uppercase;margin-bottom:3px">${c.label}</div>
+        <div style="font-size:13px;line-height:1.5">${escHtml(String(p[c.key]))}</div>
+      </div>`
+    ).join('');
+    if (!itens) return '';
+    return `<div style="margin-bottom:14px">
+      <div class="result-label">🔍 Perfil de Conexão</div>
+      ${itens}
+    </div>`;
+  }
+
+  function buildDiscBlock(cp) {
+    if (!cp.perfil_1) return '';
+    const p1 = PERFIL_CORES[cp.perfil_1] || { bg:'#888', bgLight:'#f4f4f4', border:'#888', letra:'?', desc:'' };
+    const p2 = cp.perfil_2 ? (PERFIL_CORES[cp.perfil_2] || null) : null;
+    return `<div style="margin-bottom:10px">
+      <div class="result-label">🧠 Perfil Comportamental</div>
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <div style="flex:1;background:${p1.bgLight};border:2px solid ${p1.border};border-radius:10px;padding:12px;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:${p1.bg};color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${p1.letra}</div>
+          <div style="font-size:14px;font-weight:700">${escHtml(cp.perfil_1)}</div>
+        </div>
+        ${p2?`<div style="flex:1;background:${p2.bgLight};border:2px solid ${p2.border};border-radius:10px;padding:12px;text-align:center">
+          <div style="width:40px;height:40px;border-radius:50%;background:${p2.bg};color:white;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 6px">${p2.letra}</div>
+          <div style="font-size:14px;font-weight:700">${escHtml(cp.perfil_2)}</div>
+        </div>`:''}
+      </div>
+      ${cp.como_agir||cp.nao_fazer?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${cp.como_agir?`<div style="background:#e8f5e9;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#2e7d32;margin-bottom:2px">✅ COMO AGIR</div><div style="font-size:11px">${escHtml(cp.como_agir)}</div></div>`:''}
+        ${cp.nao_fazer?`<div style="background:#fdecea;border-radius:8px;padding:8px"><div style="font-size:10px;font-weight:700;color:#c62828;margin-bottom:2px">🚫 NÃO FAZER</div><div style="font-size:11px">${escHtml(cp.nao_fazer)}</div></div>`:''}
+      </div>`:''}
+    </div>`;
+  }
+
+  function buildVendaBlock(v) {
+    if (!v.foco_da_venda) return '';
+    const objs = (v.objecoes_provaveis||[]).map((o,i)=>`
+      <div style="background:var(--bg);border-radius:8px;padding:10px;border:1px solid var(--border);margin-bottom:6px">
+        <div style="font-size:11px;font-weight:700;color:var(--danger);margin-bottom:2px">⚠️ ${escHtml(o)}</div>
+        <div style="font-size:12px;color:var(--primary)">✅ ${escHtml((v.como_contornar||[])[i]||'—')}</div>
+      </div>`).join('');
+    return `<div style="margin-bottom:10px">
+      <div class="result-label">💰 Estratégia de Venda</div>
+      <div class="result-text" style="margin-bottom:8px;font-size:13px">${escHtml(v.foco_da_venda)}</div>
+      ${objs}
+      ${v.frase_de_fechamento?`<div style="background:var(--primary);border-radius:8px;padding:12px;color:white;font-size:13px;font-style:italic">"${escHtml(v.frase_de_fechamento)}"</div>`:''}
+    </div>`;
+  }
+
+  function buildMelhoriasBlock(m) {
+    if (!m || (!m.pontos_positivos && !m.oportunidades_perdidas && !m.frases_sugeridas)) return '';
+    const listItems = (arr) => (arr||[]).filter(i=>i&&i.trim()).map(i=>`<li style="font-size:12px;line-height:1.6;padding:3px 0;border-bottom:1px solid var(--border)">${escHtml(i)}</li>`).join('');
+    const frases = (arr) => (arr||[]).filter(i=>i&&i.trim()).map(i=>`<div style="background:var(--primary-light);border-left:3px solid var(--primary);border-radius:0 6px 6px 0;padding:8px 10px;margin-bottom:6px;font-size:12px;font-style:italic;color:var(--primary-dark)">"${escHtml(i)}"</div>`).join('');
+    return `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
+      <div class="result-label">💡 O que poderia melhorar</div>
+      ${m.pontos_positivos&&m.pontos_positivos.filter(i=>i).length?`<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#2e7d32;margin-bottom:4px">✅ O que foi bem</div><ul style="list-style:none;padding:0">${listItems(m.pontos_positivos)}</ul></div>`:''}
+      ${m.oportunidades_perdidas&&m.oportunidades_perdidas.filter(i=>i).length?`<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:#e65100;margin-bottom:4px">⚠️ Oportunidades perdidas</div><ul style="list-style:none;padding:0">${listItems(m.oportunidades_perdidas)}</ul></div>`:''}
+      ${m.frases_sugeridas&&m.frases_sugeridas.filter(i=>i).length?`<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--primary);margin-bottom:4px">💬 Frases sugeridas</div>${frases(m.frases_sugeridas)}</div>`:''}
+      ${m.proxima_etapa?`<div style="background:#1a3a2a;border-radius:8px;padding:10px;color:white"><div style="font-size:10px;font-weight:700;text-transform:uppercase;opacity:0.7;margin-bottom:4px">➡️ Próxima etapa</div><div style="font-size:12px;line-height:1.5">${escHtml(m.proxima_etapa)}</div></div>`:''}
+    </div>`;
+  }
+
+  const blocoBasico = `<div class="profile-grid" style="margin-bottom:12px">${basicItems}</div>`;
+  const blocoClin = clinItems ? `<div class="profile-grid" style="margin-bottom:12px">${clinItems}</div>` : '';
+  const blocoObs = c.perfil_obs&&c.perfil_obs.trim()&&c.perfil_obs!=='—' ? `<div class="result-label">Observações</div><div class="result-text" style="margin-bottom:12px;font-size:13px">${escHtml(c.perfil_obs)}</div>` : '';
+  const blocoResumo = c.resumo ? `<div style="margin-bottom:12px"><div class="result-label">Resumo</div><div class="result-text" style="font-size:13px">${escHtml(c.resumo)}</div></div>` : '';
+  const blocoTranscricao = c.transcricao ? `<div style="margin-bottom:12px"><div class="result-label">Transcrição Avaliação</div><div class="result-text" style="font-size:12px">${escHtml(c.transcricao)}</div></div>` : '';
+  const blocoTourTransc = c.tour_transcricao ? `<div style="margin-bottom:12px"><div class="result-label">Transcrição Tour</div><div class="result-text" style="font-size:12px">${escHtml(c.tour_transcricao)}</div></div>` : '';
+
+  const tabStyle = 'display:flex;gap:4px;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:14px';
+  const tabBtnStyle = (active) => `flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;background:${active?'white':'transparent'};color:${active?'var(--primary)':'var(--text-muted)'};box-shadow:${active?'var(--shadow)':'none'}`;
+
+  const btnGravarAval = !c.is_comercial
+    ? `<button onclick="modalIrAvaliacao('${escHtml(c.pac_nome)}')" style="width:100%;padding:14px;background:#2dc653;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px">🔬 Gravar Avaliação</button>`
+    : '';
+
+  const btnGravarRel = !c.is_comercial
+    ? `<button onclick="modalIrRelacionamento('${escHtml(c.pac_nome)}')" style="width:100%;padding:14px;background:#8B2D42;color:white;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px">💼 Gravar Relacionamento</button>`
+    : '';
+
+  const panelTour = `${buildPerfilConexaoBlock(tourPerfil)}${buildDiscBlock(tourComp)}${buildVendaBlock(tourVenda)}${buildMelhoriasBlock(tourMelhorias)}${btnGravarAval}`;
+  const panelCom  = `${buildDiscBlock(comComp)}${buildVendaBlock(comVenda)}${buildMelhoriasBlock(comMelhorias)}`;
+
+  // Se aberto da aba Tour: mostrar botão Gravar Avaliação no painel principal
+  const btnAcaoNoAval = etapaOrigem === 'tour' ? btnGravarAval : btnGravarRel;
+
+  const panelAval = isRelacionamento
+    ? `${buildDiscBlock(comp)}${buildVendaBlock(venda)}${blocoBasico}${blocoResumo}${btnGravarRel}`
+    : `${buildDiscBlock(comp)}${blocoBasico}${blocoClin}${blocoObs}${blocoResumo}${buildVendaBlock(venda)}${buildMelhoriasBlock(melhorias)}${btnAcaoNoAval}`;
+
+  const hasTour = c.tour_transcricao || tourComp.perfil_1;
+  const hasCom  = c.comercial_transcricao || comComp.perfil_1;
+
+  if (hasTour || hasCom) {
+    const defaultTab = (etapaOrigem === 'tour' && hasTour) ? 'tour' : (etapaOrigem === 'relacionamento' && hasCom) ? 'com' : 'aval';
+    const tabs = [
+      {id:'aval', label:'🔬 Avaliação'},
+      ...(hasTour ? [{id:'tour', label:'🗺️ Tour'}] : []),
+      ...(hasCom  ? [{id:'com',  label:'💼 Comercial'}] : []),
+    ];
+    document.getElementById('modal-content').innerHTML = `
+      <div style="${tabStyle}">${tabs.map(t=>`<button style="${tabBtnStyle(t.id===defaultTab)}" id="modal-tab-${t.id}" onclick="modalSwitchTab('${t.id}')">${t.label}</button>`).join('')}</div>
+      <div id="modal-panel-aval" style="${defaultTab!=='aval'?'display:none':''}">${panelAval}</div>
+      ${hasTour?`<div id="modal-panel-tour" style="${defaultTab!=='tour'?'display:none':''}">${panelTour}</div>`:''}
+      ${hasCom ?`<div id="modal-panel-com"  style="${defaultTab!=='com'?'display:none':''}">${panelCom}</div>`:''}
+    `;
+  } else {
+    document.getElementById('modal-content').innerHTML = panelAval;
+  }
+  // botão excluir só para Admin e Mone
+  const canDelete = currentUser.role === 'Administrador' || currentUser.username === 'mone';
+  const btnExcluir = document.getElementById('btn-excluir-modal');
+  if (btnExcluir) btnExcluir.style.display = canDelete ? '' : 'none';
+
+  document.getElementById('modal-detalhe').classList.add('open');
+}
+
+function modalIrAvaliacao(pacNome) {
+  closeModal();
+  switchTab('nova');
+  setTimeout(() => {
+    const inputNome = document.getElementById('pac-nome');
+    if (inputNome && pacNome) inputNome.value = pacNome;
+    switchRec('avaliacao');
+    const recBtn = document.getElementById('btn-record-avaliacao');
+    if (recBtn) recBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 300);
+}
+
+function modalIrRelacionamento(pacNome) {
+  closeModal();
+  switchTab('hist-rel');
+  setTimeout(() => {
+    const gravWrap = document.getElementById('gravacao-rel-wrap');
+    if (gravWrap) gravWrap.style.display = 'block';
+    resetRecCom();
+    const inputNome = document.getElementById('com-pac-nome');
+    if (inputNome) inputNome.value = pacNome;
+    const recCard = document.getElementById('btn-record-comercial2');
+    if (recCard) recCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 300);
+}
+
+async function deleteConsulta() {
+  if (!confirm('Excluir esta consulta?')) return;
+  const idToDelete = currentConsultaId;
+  closeModal();
+  const { error } = await supa.from('consultas').delete().eq('id', idToDelete);
+  if (error) { alert('Erro ao excluir: ' + error.message); return; }
+  // recarrega o histórico ativo
+  loadHistoricoEtapa('tour');
+  loadHistoricoEtapa('avaliacao');
+  loadHistoricoEtapa('relacionamento');
+}
+function closeModal() { document.getElementById('modal-detalhe').classList.remove('open'); currentConsultaId = null; }
+function modalSwitchTab(tab) {
+  ['aval','tour','com'].forEach(t => {
+    const panel = document.getElementById('modal-panel-'+t);
+    const btn   = document.getElementById('modal-tab-'+t);
+    if (panel) panel.style.display = t===tab ? 'block' : 'none';
+    if (btn) {
+      btn.style.background = t===tab ? 'var(--white)' : 'transparent';
+      btn.style.color      = t===tab ? 'var(--primary)' : 'var(--text-muted)';
+      btn.style.boxShadow  = t===tab ? 'var(--shadow)' : 'none';
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+//  USUÁRIOS — SUPABASE
+// ══════════════════════════════════════════════
+async function loadUsers() {
+  const { data: users } = await supa.from('usuarios').select('*').order('created_at');
+  document.getElementById('users-list').innerHTML = (users||[]).map(u => `
+    <div class="user-row">
+      <div><div class="user-info-name">${escHtml(u.name)} <span class="badge ${u.is_admin?'badge-admin':'badge-user'}">${u.is_admin?'Admin':'Usuário'}</span></div>
+      <div class="user-info-sub">@${escHtml(u.username)} · ${escHtml(u.role||'—')}</div></div>
+      ${!u.is_admin&&u.username!==currentUser.username?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${escHtml(u.username)}')">Remover</button>`:''}
+    </div>`).join('');
+}
+
+async function adminCreateUser() {
+  const name = document.getElementById('new-user-name').value.trim();
+  const username = document.getElementById('new-user-username').value.trim().toLowerCase().replace(/\s/g,'');
+  const password = document.getElementById('new-user-pass').value;
+  const role = document.getElementById('new-user-role').value.trim();
+  if (!name||!username||!password) return alert('Preencha nome, usuário e senha.');
+  if (password.length < 4) return alert('Senha mínimo 4 caracteres.');
+  const { error } = await supa.from('usuarios').insert({ username, name, password: hashSimple(password), role: role||'Usuário', is_admin: false });
+  if (error) return alert('Erro: ' + (error.message.includes('unique') ? 'Usuário já existe.' : error.message));
+  document.getElementById('new-user-name').value=''; document.getElementById('new-user-username').value='';
+  document.getElementById('new-user-pass').value=''; document.getElementById('new-user-role').value='';
+  alert(`Usuário "${name}" criado!`); loadUsers();
+}
+
+async function deleteUser(username) {
+  if (!confirm(`Remover "${username}"?`)) return;
+  await supa.from('usuarios').delete().eq('username', username);
+  loadUsers();
+}
+
+// ══════════════════════════════════════════════
+//  CONFIG / API KEY
+// ══════════════════════════════════════════════
+async function loadApiKey() {
+  const key = localStorage.getItem('orApiKey');
+  if (key) document.getElementById('api-key-input').value = key;
+}
+function saveApiKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) return alert('Informe a chave.');
+  localStorage.setItem('orApiKey', k);
+  alert('Chave salva!');
+}
+
+async function loadConfig() {
+  loadApiKey();
+  document.getElementById('my-account-info').innerHTML = `
+    <div><span class="fw-bold">Nome:</span> ${escHtml(currentUser.name)}</div>
+    <div style="margin-top:6px"><span class="fw-bold">Usuário:</span> ${escHtml(currentUser.username)}</div>
+    <div style="margin-top:6px"><span class="fw-bold">Cargo:</span> ${escHtml(currentUser.role||'—')}</div>
+    <div style="margin-top:6px"><span class="fw-bold">Tipo:</span> <span class="badge ${currentUser.is_admin?'badge-admin':'badge-user'}">${currentUser.is_admin?'Admin':'Usuário'}</span></div>`;
+  if (currentUser.is_admin) { document.getElementById('admin-section').style.display='block'; loadUsers(); }
+}
+
+// ══════════════════════════════════════════════
+//  UI
+// ══════════════════════════════════════════════
+function showPage(id) { document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='';}); document.getElementById(id).classList.add('active'); document.body.classList.toggle('login-mode', id==='page-login'); }
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const fn = b.getAttribute('onclick')||'';
+    const m = fn.match(/switchTab\('([^']+)'\)/);
+    if (m) b.classList.toggle('active', m[1]===tab);
+  });
+  const allPanels = ['nova','hist-tour','hist-aval','hist-rel','config'];
+  allPanels.forEach(t => {
+    const el = document.getElementById('tab-'+t);
+    if (el) el.style.display = t===tab ? 'block' : 'none';
+  });
+  if (tab==='hist-tour') loadHistoricoEtapa('tour');
+  if (tab==='hist-aval') loadHistoricoEtapa('avaliacao');
+  if (tab==='hist-rel') { loadRetornos(); loadHistoricoEtapa('relacionamento'); }
+  if (tab==='config') loadConfig();
+}
+function showProcessing(show) {
+  document.getElementById('processing-card').classList.toggle('visible',show);
+  if(show) ['step-summary','step-profile','step-save'].forEach((s,i)=>{ const el=document.getElementById(s); el.classList.remove('done','active'); el.querySelector('.step-icon').textContent=['📄','👤','💾'][i]; });
+}
+function setStep(id,state) {
+  const el=document.getElementById(id); el.classList.remove('done','active');
+  if(state==='done'){el.classList.add('done');el.querySelector('.step-icon').textContent='✅';}
+  else if(state==='active'){el.classList.add('active');el.querySelector('.step-icon').innerHTML='<div class="spinner"></div>';}
+}
+// ══ ABA COMERCIAL (Relacionamento) ══
+const recStateCom = { recognition:null, isRecording:false, isPaused:false, finalTranscript:'', seconds:0, timer:null };
+let lastAnalysisCom = null;
+
+function toggleRecCom() {
+  if (!recStateCom.isRecording && !recStateCom.isPaused) { startRecCom(); }
+  else if (recStateCom.isRecording) { pauseRecCom(); }
+  else if (recStateCom.isPaused) { resumeRecCom(); }
+}
+
+function startRecCom() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { alert('Use o Chrome para transcrição ao vivo.'); return; }
+  recStateCom.recognition = new SR();
+  recStateCom.recognition.lang='pt-BR'; recStateCom.recognition.continuous=true; recStateCom.recognition.interimResults=true;
+  recStateCom.finalTranscript = ''; recStateCom.isPaused = false;
+  recStateCom.recognition.onresult = e => {
+    let interim='';
+    for (let i=e.resultIndex;i<e.results.length;i++) { if(e.results[i].isFinal) recStateCom.finalTranscript+=e.results[i][0].transcript+' '; else interim+=e.results[i][0].transcript; }
+    document.getElementById('transcript-final-comercial2').textContent = recStateCom.finalTranscript;
+    document.getElementById('transcript-interim-comercial2').textContent = interim;
+  };
+  recStateCom.recognition.onerror = () => pauseRecCom();
+  recStateCom.recognition.onend = () => { if(recStateCom.isRecording) recStateCom.recognition.start(); };
+  recStateCom.recognition.start();
+  recStateCom.isRecording = true; recStateCom.seconds=0;
+  recStateCom.timer = setInterval(()=>{ recStateCom.seconds++; const m=String(Math.floor(recStateCom.seconds/60)).padStart(2,'0'),s=String(recStateCom.seconds%60).padStart(2,'0'); document.getElementById('record-timer-comercial2').textContent=m+':'+s; },1000);
+  document.getElementById('record-timer-comercial2').style.display='block';
+  document.getElementById('btn-record-comercial2').classList.add('recording');
+  document.getElementById('btn-record-comercial2').style.background='';
+  document.getElementById('record-icon-comercial2').textContent='⏸️';
+  document.getElementById('record-status-comercial2').textContent='Gravando... fale normalmente';
+  document.getElementById('dot-live-comercial2').classList.add('on');
+  document.getElementById('live-box-comercial2').classList.add('active');
+  document.getElementById('btn-stop-comercial2').style.display='flex';
+}
+
+function pauseRecCom() {
+  recStateCom.isRecording=false; recStateCom.isPaused=true; clearInterval(recStateCom.timer);
+  if(recStateCom.recognition){try{recStateCom.recognition.stop();}catch(e){} recStateCom.recognition=null;}
+  document.getElementById('btn-record-comercial2').classList.remove('recording');
+  document.getElementById('btn-record-comercial2').style.background='var(--warn)';
+  document.getElementById('record-icon-comercial2').textContent='▶️';
+  document.getElementById('dot-live-comercial2').classList.remove('on');
+  document.getElementById('live-box-comercial2').classList.remove('active');
+  document.getElementById('record-status-comercial2').textContent='⏸️ Pausado — toque para continuar';
+  document.getElementById('transcript-interim-comercial2').textContent='';
+}
+
+function resumeRecCom() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  recStateCom.recognition = new SR();
+  recStateCom.recognition.lang='pt-BR'; recStateCom.recognition.continuous=true; recStateCom.recognition.interimResults=true;
+  recStateCom.isPaused=false; recStateCom.isRecording=true;
+  recStateCom.recognition.onresult = e => {
+    let interim='';
+    for (let i=e.resultIndex;i<e.results.length;i++) { if(e.results[i].isFinal) recStateCom.finalTranscript+=e.results[i][0].transcript+' '; else interim+=e.results[i][0].transcript; }
+    document.getElementById('transcript-final-comercial2').textContent = recStateCom.finalTranscript;
+    document.getElementById('transcript-interim-comercial2').textContent = interim;
+  };
+  recStateCom.recognition.onerror = () => pauseRecCom();
+  recStateCom.recognition.onend = () => { if(recStateCom.isRecording) recStateCom.recognition.start(); };
+  recStateCom.recognition.start();
+  recStateCom.timer = setInterval(()=>{ recStateCom.seconds++; const m=String(Math.floor(recStateCom.seconds/60)).padStart(2,'0'),s=String(recStateCom.seconds%60).padStart(2,'0'); document.getElementById('record-timer-comercial2').textContent=m+':'+s; },1000);
+  document.getElementById('btn-record-comercial2').classList.add('recording');
+  document.getElementById('btn-record-comercial2').style.background='';
+  document.getElementById('record-icon-comercial2').textContent='⏸️';
+  document.getElementById('record-status-comercial2').textContent='Gravando... fale normalmente';
+  document.getElementById('dot-live-comercial2').classList.add('on');
+  document.getElementById('live-box-comercial2').classList.add('active');
+}
+
+function stopRecCom() {
+  recStateCom.isRecording=false; recStateCom.isPaused=false; clearInterval(recStateCom.timer);
+  if(recStateCom.recognition){try{recStateCom.recognition.stop();}catch(e){} recStateCom.recognition=null;}
+  document.getElementById('btn-record-comercial2').classList.remove('recording');
+  document.getElementById('btn-record-comercial2').style.background='';
+  document.getElementById('record-icon-comercial2').textContent='🎙️';
+  document.getElementById('dot-live-comercial2').classList.remove('on');
+  document.getElementById('live-box-comercial2').classList.remove('active');
+  document.getElementById('btn-stop-comercial2').style.display='none';
+  const hasText = recStateCom.finalTranscript.trim().length>0;
+  if (hasText) {
+    document.getElementById('record-status-comercial2').textContent = 'Analisando automaticamente...';
+    setTimeout(() => analyzeComercial(), 400);
+  } else {
+    document.getElementById('record-status-comercial2').textContent = 'Nenhuma fala detectada. Tente novamente.';
+  }
+}
+
+function resetRecCom() {
+  stopRecCom();
+  recStateCom.finalTranscript=''; recStateCom.seconds=0;
+  document.getElementById('transcript-final-comercial2').textContent='';
+  document.getElementById('transcript-interim-comercial2').textContent='';
+  document.getElementById('record-timer-comercial2').textContent='00:00';
+  document.getElementById('record-timer-comercial2').style.display='none';
+  document.getElementById('btn-analyze-wrap-comercial2').style.display='none';
+  document.getElementById('record-status-comercial2').textContent='Toque para começar a gravar';
+}
+
+async function analyzeComercial() {
+  const pacNome = document.getElementById('com-pac-nome').value.trim();
+  if (!pacNome) { alert('Informe o nome do paciente.'); return; }
+  const transcript = recStateCom.finalTranscript;
+  if (!transcript.trim()) { alert('Grave uma consulta primeiro.'); return; }
+  const apiKey = localStorage.getItem('orApiKey') || '';
+  document.getElementById('btn-analyze-wrap-comercial2').style.display='none';
+  showProcessing(true); setStep('step-summary','active');
+  try {
+    const prompt = `Analista de vendas consultivas da Oral Unic (Carlos Barbosa/RS). Etapa: RELACIONAMENTO — fechamento da venda.
+DISC: Comunicador(I)=emoção/sonho, Executor(D)=objetivo/prazo, Planejador(S)=segurança/sem pressão, Analista(C)=dados/lógica.
+Paciente: ${pacNome}
+Transcrição: "${transcript.trim()}"
+Responda SOMENTE neste formato exato, sem texto fora das seções:
+===RESUMO===
+[até 80 palavras: o que foi apresentado, reação do paciente, objeções surgidas, situação atual (fechou/pensando/recusou)]
+===COMPORTAMENTO===
+{"perfil_1":"","perfil_2":"","justificativa":"","como_agir":"","nao_fazer":"","momento_ideal_contato":""}
+===RESGATE===
+{"objecoes_identificadas":["","",""],"como_contornar_identificadas":["","",""],"objecoes_provaveis":["","",""],"como_contornar_provaveis":["","",""],"estrategia_resgate":"","frase_de_fechamento":""}
+===MELHORIAS===
+{"pontos_positivos":["",""],"oportunidades_perdidas":["","",""],"frases_sugeridas":["","",""],"proxima_etapa":""}`;
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,'HTTP-Referer':'https://oral-unic.vercel.app','X-Title':'Oral Unic'},body:JSON.stringify({model:'anthropic/claude-haiku-4-5',max_tokens:2000,messages:[{role:'user',content:prompt}]})});
+    const data = await response.json();
+    if (!data.choices || !data.choices[0]) throw new Error(data.error?.message || JSON.stringify(data));
+    const text = data.choices[0].message?.content||'';
+    const mSum = text.match(/===RESUMO===\s*([\s\S]*?)(?====\w)/);
+    const mC   = text.match(/===COMPORTAMENTO===\s*([\s\S]*?)(?====\w)/);
+    const mR   = text.match(/===RESGATE===\s*([\s\S]*?)(?====\w)/);
+    const mM   = text.match(/===MELHORIAS===\s*([\s\S]+)/);
+    const resumoCom = mSum ? mSum[1].trim() : '';
+    const safeParseJsonCom = (raw) => { if (!raw) return {}; const s = raw.replace(/```json|```/g,'').trim(); try { return JSON.parse(s); } catch(e) { const m = s.match(/\{[\s\S]*\}/); if (m) { try { return JSON.parse(m[0]); } catch(e2){} } return {}; } };
+    let comportamento=safeParseJsonCom(mC?mC[1]:null), resgate=safeParseJsonCom(mR?mR[1]:null), melhorias=safeParseJsonCom(mM?mM[1]:null);
+    // mostrar resumo
+    const resumoWrap = document.getElementById('result-resumo-comercial2');
+    if (resumoWrap) { resumoWrap.textContent = resumoCom; resumoWrap.closest('.card').style.display = resumoCom ? 'block' : 'none'; }
+    renderComportamento(comportamento,'comercial2');
+    renderResgate(resgate,'comercial2');
+    renderMelhorias(melhorias,'comercial2');
+    lastAnalysisCom = { pacNome, comportamento, venda: resgate, melhorias, resumo: resumoCom, transcricao: transcript.trim() };
+    setStep('step-profile','done'); showProcessing(false);
+    document.getElementById('results-wrap-comercial').style.display='block';
+  } catch(err) { showProcessing(false); document.getElementById('btn-analyze-wrap-comercial2').style.display='flex'; alert('Erro na análise: '+err.message); }
+}
+
+function renderResgate(r, sufixo) {
+  const wrap = document.getElementById('result-venda-'+(sufixo||'comercial2'));
+  if (!r || (!r.objecoes_identificadas && !r.objecoes_provaveis)) {
+    wrap.innerHTML = '<p style="color:var(--text-muted);font-size:14px">Nenhuma objeção identificada.</p>'; return;
+  }
+  const objsReais = (r.objecoes_identificadas||[]).map((o,i) => `
+    <div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:var(--danger);margin-bottom:4px">⚠️ Objeção real ${i+1}</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${escHtml(o)}</div>
+      <div style="font-size:13px;color:var(--primary)">✅ ${escHtml((r.como_contornar_identificadas||[])[i]||'—')}</div>
+    </div>`).join('');
+  const objsProvaveis = (r.objecoes_provaveis||[]).map((o,i) => `
+    <div style="background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--border);margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:4px">🔮 Objeção provável ${i+1}</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${escHtml(o)}</div>
+      <div style="font-size:13px;color:var(--primary)">✅ ${escHtml((r.como_contornar_provaveis||[])[i]||'—')}</div>
+    </div>`).join('');
+  wrap.innerHTML = `
+    ${objsReais ? `<div style="margin-bottom:12px"><div class="result-label" style="color:var(--danger)">⚠️ Objeções da conversa</div>${objsReais}</div>` : ''}
+    ${objsProvaveis ? `<div style="margin-bottom:12px"><div class="result-label" style="color:#e65100">🔮 Objeções prováveis no próximo contato</div>${objsProvaveis}</div>` : ''}
+    ${r.estrategia_resgate?`<div style="margin:12px 0">
+      <div class="result-label">🔄 Estratégia de Resgate</div>
+      <div class="result-text" style="font-size:13px">${escHtml(r.estrategia_resgate)}</div>
+    </div>`:''}
+    ${r.frase_de_fechamento?`<div style="background:var(--primary);border-radius:10px;padding:14px;color:white">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;opacity:0.8;margin-bottom:6px">💡 Frase de fechamento</div>
+      <div style="font-size:15px;font-style:italic">"${escHtml(r.frase_de_fechamento)}"</div>
+    </div>`:''}`;
+}
+
+function toggleEfetivado() {
+  setTimeout(() => {
+    const checked = document.getElementById('chk-efetivado').checked;
+    document.getElementById('efetivado-msg').style.display = checked ? 'flex' : 'none';
+    document.getElementById('btn-salvar-comercial-wrap').style.display = checked ? 'none' : 'flex';
+  }, 10);
+}
+
+function toggleRetornoData() {
+  const tipo = document.getElementById('com-retorno-tipo').value;
+  const show = tipo === 'ligar' || tipo === 'data';
+  document.getElementById('com-retorno-data-wrap').style.display = show ? 'block' : 'none';
+  if (tipo === 'ligar')     document.getElementById('com-retorno-data-label').textContent = '📞 Quando ligar';
+  if (tipo === 'data')      document.getElementById('com-retorno-data-label').textContent = '📅 Data do retorno';
+  // botão salvar: esconder quando efetivado, mostrar mensagem
+  const btnSalvar = document.querySelector('#results-wrap-comercial .btn-secondary');
+  const efetivadoMsg = document.getElementById('efetivado-msg');
+  if (tipo === 'efetivado') {
+    if (btnSalvar) btnSalvar.style.display = 'none';
+    if (efetivadoMsg) efetivadoMsg.style.display = 'flex';
+  } else {
+    if (btnSalvar) btnSalvar.style.display = '';
+    if (efetivadoMsg) efetivadoMsg.style.display = 'none';
+  }
+}
+
+async function saveComercial() {
+  if (!lastAnalysisCom) { alert('Nenhuma análise para salvar.'); return; }
+  const btn = document.querySelector('#results-wrap-comercial .btn-secondary');
+  btn.disabled=true; btn.textContent='💾 Salvando...';
+  const retornoTipo = document.getElementById('com-retorno-tipo').value;
+  const retornoData = document.getElementById('com-retorno-data').value || null;
+  try {
+    const { error } = await supa.from('consultas').insert({
+      username: currentUser.username,
+      pac_nome: lastAnalysisCom.pacNome,
+      transcricao:'', resumo: lastAnalysisCom.resumo || '', perfil_obs:'', perfil_json:'{}',
+      comportamento_json: JSON.stringify(lastAnalysisCom.comportamento),
+      venda_json: JSON.stringify(lastAnalysisCom.venda),
+      tour_transcricao:'', tour_comportamento_json:'{}', tour_venda_json:'{}',
+      comercial_transcricao: lastAnalysisCom.transcricao,
+      comercial_comportamento_json: JSON.stringify(lastAnalysisCom.comportamento),
+      comercial_venda_json: JSON.stringify(lastAnalysisCom.venda),
+      comercial_melhorias_json: JSON.stringify(lastAnalysisCom.melhorias || {}),
+      retorno_tipo: retornoTipo || null,
+      retorno_data: retornoData,
+      is_comercial: true,
+      created_by: currentUser.name
+    });
+    if (error) throw error;
+    alert('Salvo na nuvem! ☁️');
+    resetComercialTab();
+    switchTab('hist-rel');
+  } catch(e) { alert('Erro: '+e.message); }
+  finally { btn.disabled=false; btn.textContent='💾 Salvar na Nuvem'; }
+}
+
+function resetComercialTab() {
+  const n = document.getElementById('com-pac-nome'); if(n) n.value='';
+  const rt = document.getElementById('com-retorno-tipo'); if(rt) rt.value='';
+  const rd = document.getElementById('com-retorno-data'); if(rd) rd.value='';
+  const rdw = document.getElementById('com-retorno-data-wrap'); if(rdw) rdw.style.display='none';
+  resetRecCom();
+  const rw = document.getElementById('results-wrap-comercial'); if(rw) rw.style.display='none';
+  const chk = document.getElementById('chk-efetivado'); if(chk) chk.checked=false;
+  const em = document.getElementById('efetivado-msg'); if(em) em.style.display='none';
+  const bs = document.getElementById('btn-salvar-comercial-wrap'); if(bs) bs.style.display='flex';
+  lastAnalysisCom=null;
+}
+
+function retornoDiffDays(dataStr) {
+  if (!dataStr) return null;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const data = new Date(dataStr+'T00:00:00');
+  return Math.round((data - hoje) / 86400000);
+}
+
+function retornoBadge(tipo, dataStr) {
+  if (tipo === 'ligar') return { cls:'ligar', badge:'badge-ligar', label:'📞 Ligar', cardCls:'ligar' };
+  if (!dataStr) return null;
+  const diff = retornoDiffDays(dataStr);
+  const d = new Date(dataStr+'T00:00:00');
+  const dateLabel = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  if (diff < 0)  return { cls:'vencido', badge:'badge-vermelho', label:`⚠️ Vencido ${dateLabel}`, cardCls:'vencido' };
+  if (diff === 0) return { cls:'hoje',   badge:'badge-vermelho', label:`🔴 Hoje`,                 cardCls:'hoje' };
+  if (diff === 1) return { cls:'amanha', badge:'badge-laranja',  label:`🟠 Amanhã`,               cardCls:'amanha' };
+  if (diff === 2) return { cls:'em2dias',badge:'badge-amarelo',  label:`🟡 ${dateLabel}`,         cardCls:'em2dias' };
+  return              { cls:'futuro',    badge:'badge-azul',     label:`📅 ${dateLabel}`,         cardCls:'futuro' };
+}
+
+async function loadRetornos() {
+  const wrap = document.getElementById('retornos-lista');
+  if (!wrap) return;
+  const { data } = await supa.from('consultas')
+    .select('id,pac_nome,retorno_tipo,retorno_data,created_at')
+    .eq('is_comercial', true)
+    .not('retorno_tipo','is',null)
+    .order('retorno_data', { ascending: true, nullsFirst: false });
+  if (!data || !data.length) { wrap.innerHTML=''; return; }
+  wrap.innerHTML = '<div class="result-label" style="margin-bottom:8px">📋 Retornos pendentes</div>' +
+    data.map(c => {
+      const rb = retornoBadge(c.retorno_tipo, c.retorno_data);
+      if (!rb) return '';
+      return `<div class="retorno-card ${rb.cardCls}" onclick="openConsulta('${c.id}')">
+        <div>
+          <div class="retorno-nome">👤 ${escHtml(c.pac_nome)}</div>
+          <div class="retorno-info">📅 ${formatDate(c.created_at)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <span class="retorno-badge ${rb.badge}">${rb.label}</span>
+          <button onclick="event.stopPropagation();marcarRetornoConcluido('${c.id}')" style="background:none;border:1px solid #ccc;border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;color:#555">✅ Concluído</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+async function marcarRetornoConcluido(id) {
+  await supa.from('consultas').update({ retorno_tipo: null, retorno_data: null }).eq('id', id);
+  loadRetornos();
+}
+
+
+async function loadHistoricoComercial() { loadHistoricoEtapa('relacionamento'); }
+
+function irParaAvaliacao() {
+  document.getElementById('results-wrap').style.display = 'none';
+  document.getElementById('btn-ir-avaliacao').style.display = 'none';
+  resetRec('avaliacao');
+  switchRec('avaliacao');
+  window.scrollTo(0, 0);
+}
+
+async function irParaRelacionamento() {
+  const pacNome = (lastAnalysis && lastAnalysis.pacNome) || '';
+  document.getElementById('results-wrap').style.display = 'none';
+  document.getElementById('btn-ir-relacionamento').style.display = 'none';
+  // salva a avaliação silenciosamente sem redirecionar
+  await saveConsultaSilent();
+  // vai para aba Relacionamento
+  switchTab('hist-rel');
+  setTimeout(() => {
+    const inputNome = document.getElementById('com-pac-nome');
+    if (inputNome && pacNome) inputNome.value = pacNome;
+    // garante que a gravação está visível e reseta
+    const gravWrap = document.getElementById('gravacao-rel-wrap');
+    if (gravWrap) gravWrap.style.display = 'block';
+    resetRecCom();
+    // scroll até o microfone
+    const recCard = document.getElementById('btn-record-comercial2');
+    if (recCard) recCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 300);
+}
+
+async function saveConsultaSilent() {
+  if (!lastAnalysis) return;
+  const perfilIncerto = document.getElementById('chk-perfil-incerto').checked;
+  const tour = lastAnalysis.tour || {};
+  const aval = lastAnalysis.avaliacao || {};
+  const com  = lastAnalysis.comercial || {};
+  try {
+    await supa.from('consultas').insert({
+      username: currentUser.username,
+      pac_nome: lastAnalysis.pacNome,
+      pac_idade: lastAnalysis.pacIdade,
+      pac_genero: lastAnalysis.pacGenero,
+      pac_motivo: lastAnalysis.pacMotivo,
+      transcricao: aval.transcricao || '',
+      resumo: aval.resumo || '',
+      perfil_obs: (aval.perfil||{}).observacoes || '',
+      perfil_json: JSON.stringify(aval.perfil || {}),
+      comportamento_json: JSON.stringify(aval.comportamento || {}),
+      venda_json: JSON.stringify(aval.venda || {}),
+      tour_transcricao: tour.transcricao || '',
+      tour_resumo: tour.resumo || '',
+      tour_perfil_json: JSON.stringify(tour.perfil || {}),
+      tour_comportamento_json: JSON.stringify(tour.comportamento || {}),
+      tour_venda_json: JSON.stringify(tour.venda || {}),
+      tour_melhorias_json: JSON.stringify(tour.melhorias || {}),
+      melhorias_json: JSON.stringify(aval.melhorias || {}),
+      comercial_transcricao: com.transcricao || '',
+      comercial_comportamento_json: JSON.stringify(com.comportamento || {}),
+      comercial_venda_json: JSON.stringify(com.venda || {}),
+      comercial_melhorias_json: JSON.stringify(com.melhorias || {}),
+      perfil_incerto: perfilIncerto,
+      created_by: currentUser.name
+    });
+  } catch(e) { console.error('Erro ao salvar avaliação:', e); }
+}
+
+function novaConsulta() {
+  ['pac-nome','pac-idade','pac-motivo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('pac-genero').value='';
+  resetRec('tour'); resetRec('avaliacao'); resetRec('comercial');
+  Object.assign(recState.tour,{finalTranscript:'',seconds:0});
+  Object.assign(recState.avaliacao,{finalTranscript:'',seconds:0});
+  Object.assign(recState.comercial,{finalTranscript:'',seconds:0});
+  document.getElementById('results-wrap').style.display='none';
+  document.getElementById('btn-ir-avaliacao').style.display='none';
+  document.getElementById('chk-perfil-incerto').checked = false;
+  lastAnalysis=null;
+  switchRec('tour');
+  switchTab('nova');
+}
+function formatDate(iso) { const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ══════════════════════════════════════════════
+//  SEED USUÁRIOS + INIT
+// ══════════════════════════════════════════════
+async function seedUsers() {
+  const seedList = [
+    {username:'adm',           name:'Thais',          password:'ximia123',      role:'Administrador', is_admin:true},
+    {username:'captacao',      name:'Captação',       password:'CAPTACAO123',   role:'Captação',      is_admin:false},
+    {username:'avaliacao',     name:'Avaliação',      password:'AVALIADOR123',  role:'Avaliação',     is_admin:false},
+    {username:'relacionamento',      name:'Relacionamento', password:'antonio123', role:'Relacionamento',is_admin:false},
+    {username:'oralunic43@gmail.com',name:'Relacionamento', password:'antonio123', role:'Relacionamento',is_admin:false},
+    {username:'mone',                name:'Mone',           password:'cooper123',  role:'Usuário',       is_admin:false},
+  ];
+  for (const u of seedList) {
+    const { data } = await supa.from('usuarios').select('username').eq('username', u.username).single();
+    if (!data) await supa.from('usuarios').insert({ ...u, password: hashSimple(u.password) });
+    else if (['adm','mone','relacionamento','oralunic43@gmail.com'].includes(u.username)) await supa.from('usuarios').update({ password: hashSimple(u.password) }).eq('username', u.username);
+  }
+}
+
+(async () => {
+  await seedUsers();
+  // Auto-login — pula tela de login sempre
+  const MAP = {thais:'adm', dra_mone:'adm', dr_aurelio:'adm', dr_scharles:'adm', brendha:'brendha', bruna:'adm', suelen:'adm'};
+  let velloUser = localStorage.getItem('ou_currentUser');
+  if (!velloUser) { try { velloUser = window.parent.localStorage.getItem('ou_currentUser'); } catch(e){} }
+  const saved = localStorage.getItem('athenaUser');
+  if (saved) {
+    try { currentUser = JSON.parse(saved); document.body.classList.remove('login-mode'); enterApp(); return; } catch(e) { localStorage.removeItem('athenaUser'); }
+  }
+  // Busca usuário no Supabase e entra direto
+  try {
+    const username = MAP[velloUser] || 'adm';
+    const { data } = await supa.from('usuarios').select('*').eq('username', username).single();
+    if (data) { currentUser = data; localStorage.setItem('athenaUser', JSON.stringify(data)); document.body.classList.remove('login-mode'); enterApp(); return; }
+  } catch(e) {}
+  loadLoginUsers();
+})();
+</script>
+</body>
+</html>
